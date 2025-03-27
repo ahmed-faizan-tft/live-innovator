@@ -2,6 +2,7 @@ import axios from 'axios';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from "uuid";
+import { faker } from '@faker-js/faker';
 
 const Session = () => {
   // State variables
@@ -68,7 +69,9 @@ const Session = () => {
 
   const handleCardClick = async () => {
     const key = uuidv4();
-    const response = await axios.post('http://localhost:8000/session', {sessionId: key});
+    const randomName = faker.person.fullName();
+    const response = await axios.post('http://localhost:8000/create-session', {sessionId: key, name:randomName});
+    localStorage.setItem("name",randomName)
     if(response.status === 200 ){
         navigate(`/session/${key}`)
     }

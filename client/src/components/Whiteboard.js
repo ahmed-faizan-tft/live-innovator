@@ -4,10 +4,12 @@ import { v4 as uuidv4 } from 'uuid';
 import DraggableElement from './DraggableElement';
 import { restrictToParentElement } from '@dnd-kit/modifiers';
 import { io } from "socket.io-client";
+import axios from 'axios';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 const pathParts = window.location.pathname.split("/");
-const id = pathParts[pathParts.length - 1];
-const socket = io(`http://localhost:8000/session/${id}`);
 
+const id = pathParts.filter((path)=> path.includes("-"))[0]
+const socket = io(`http://localhost:8000/session/${id}`);
 
 const EMPATHY_QUADRANTS = [
   { id: 'says', title: 'Says', color: '#FFEE93', x: 1, y: 1 },
@@ -23,14 +25,56 @@ const Whiteboard = () => {
   const [formPosition, setFormPosition] = useState({ x: 0, y: 0 });
   const [formText, setFormText] = useState('');
   const [quadrant, setQuadrant] = useState(null);
-
+  const [inviteLink, setInviteLink] = useState("");
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const code = queryParams.get("code"); 
+  
+  const navigate = useNavigate()
+  
   useEffect(() => {
-    socket.on('elements', (newElements) => {
-      console.log("newElements", newElements);
+    if(code){
+      try {
+        async function fetchData(){
+          const sessionData = await axios.get(`http://localhost:8000/check/${id}/${code}`);
+            
+            if(sessionData.status !== 200 || !sessionData?.data?.data?.isPresent) {
+                navigate(`/badAuth`);
+                return
+            }
+        }
+        fetchData();
+      } catch (error) {
+        navigate(`/badAuth`);
+        return
+      }
+    }
+    try {
+      async function fetchData(){
+        const sessionData = await axios.get(`http://localhost:8000/restore/${id}`);
+          
+          if(sessionData.status === 200) {
+              const newData = sessionData.data?.data;
+              if(newData?.length > 0) {
+                setElements(newData)
+              }
+              
+          }else{
+            return;
+          }
+      }
+      fetchData();
+    } catch (error) {
+      console.log(error);
       
+      navigate(`/badAuth`);
+      return
+    }
+    
+    socket.on('elements', (newElements) => {      
       setElements(newElements);
     });
-  
+    
     return () => {
       socket.off('elements');
     };
@@ -40,6 +84,20 @@ const Whiteboard = () => {
     useSensor(MouseSensor, { activationConstraint: { distance: 10 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
   );
+  
+  const generateLink = async () => {
+    const randomSessionId = Math.random().toString(36).substring(2, 10);
+    const response = await axios.post("http://localhost:8000/create-join",{sessionId:id, code: randomSessionId})
+    if(response.status === 200){
+      setInviteLink(`${window.location.origin}/${id}/join/${randomSessionId}`);
+    }
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(inviteLink).then(() => {
+      alert("Invite link copied to clipboard!");
+    });
+  };
 
   const handleWhiteboardClick = (e) => {
     if (e.target.className !== 'empathy-map-container' && 
@@ -93,7 +151,7 @@ const Whiteboard = () => {
     setElements([...elements, newElement]);
     setFormText('');
     setShowForm(false);
-    socket.emit('newElements', [...elements, newElement]);
+    socket.emit("newElements", {id,data:[...elements, newElement]});
   };
 
   
@@ -132,7 +190,7 @@ const Whiteboard = () => {
     })
     
     setElements(updatedElement);
-    socket.emit('newElements', updatedElement);
+    socket.emit('newElements', {id,data:updatedElement});
 
   };
 
@@ -147,6 +205,20 @@ const Whiteboard = () => {
   };
 
   return (
+    <>
+     {!code && <div className="invite-container">
+      <h2 className="session-title">Session: {localStorage.getItem("name")}</h2>
+      <button className="invite-button" onClick={generateLink}>
+        Invite
+      </button>
+
+      {inviteLink && (
+        <div className="invite-link-container">
+          <input type="text" value={inviteLink} readOnly className="invite-link" />
+          <button className="copy-button" onClick={copyToClipboard}>Copy</button>
+        </div>
+      )}
+    </div>}
     <div className="empathy-map-container" onClick={handleWhiteboardClick}>
       <DndContext sensors={sensors} onDragEnd={handleDragEnd} modifiers={[restrictToParentElement]}>
         {/* Quadrants rendering (same as before) */}
@@ -228,6 +300,7 @@ const Whiteboard = () => {
         </form>
       )}
     </div>
+    </>
   );
 };
 

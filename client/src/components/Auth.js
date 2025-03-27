@@ -11,7 +11,6 @@ const Auth = () => {
     event.preventDefault();
 
     const payload = { name, role };
-    console.log(payload);
     
 
     try {
@@ -20,7 +19,6 @@ const Auth = () => {
      if(response.status === 200){
         navigate("/session/create")
      }
-      console.log('Success:', response);
     } catch (error) {
       console.error('Error:', error);
     }
