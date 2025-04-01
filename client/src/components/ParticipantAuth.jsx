@@ -1,21 +1,26 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { setUser } from "../redux/userSlice";
+import { useDispatch } from "react-redux";
 const pathParts = window.location.pathname.split("/");
 
 const ParticipantAuth = () => {
-  const sessionId = pathParts[1];
+    const [username, setUsername] = useState("");
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+const sessionId = pathParts[1];
   const code = pathParts[3];
   const navigate = useNavigate()
+  const dispatch = useDispatch();
+
   useEffect(() => {
     async function fetchData(){
-
         try {
             const sessionData = await axios.get(`http://localhost:8000/check/${sessionId}/${code}`);
             
-            if(sessionData.status === 200 && sessionData?.data?.data?.isPresent) {
-                navigate(`/session/${sessionId}?code=${code}`);
-                return
+            if (sessionData.status === 200 && sessionData?.data?.data?.isPresent) {
+                setIsAuthenticated(true);
+                return;
             }
             navigate("/badAuth")
         } catch (error) {
@@ -24,6 +29,16 @@ const ParticipantAuth = () => {
     }
     fetchData();
   }, []);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        const response = await axios.post('http://localhost:8000/auth', {name:username,role:"user"});
+        if(response.status === 200){
+            const user = response?.data?.data
+            dispatch(setUser({id:user._id, name: user.name, role:user.role}));
+            navigate(`/session/${sessionId}?code=${code}&username=${username}`);
+        }
+    };
 
   return (
     <div
@@ -34,8 +49,9 @@ const ParticipantAuth = () => {
         height: "100vh",
         width: "100vw",
         flexDirection: "column",
-      }}
-    >
+      }}>
+            {!isAuthenticated ? (
+    <>
       <p style={{ fontSize: "1.5rem", marginBottom: "1rem" }}>Authenticating...</p>
       <div
         style={{
@@ -54,7 +70,7 @@ const ParticipantAuth = () => {
             background: "linear-gradient(90deg, transparent, #000, transparent)",
             position: "absolute",
             animation: "auth-move 1s infinite",
-          }}
+        }}
         ></div>
       </div>
       <style>
@@ -65,8 +81,24 @@ const ParticipantAuth = () => {
           }
         `}
       </style>
-    </div>
-  );
+                </>
+            ) : (
+                <form onSubmit={handleSubmit} style={{ textAlign: "center" }}>
+                    <h2>Enter Your Name</h2>
+                    <input 
+                        type="text" 
+                        placeholder="Enter username" 
+                        value={username} 
+                        onChange={(e) => setUsername(e.target.value)} 
+                        required
+                        style={{ padding: "10px", fontSize: "1rem", marginBottom: "10px" }}
+                    />
+                    <br />
+                    <button type="submit" style={{ padding: "10px 20px", fontSize: "1rem" }}>Join Session</button>
+                </form>
+            )}
+        </div>
+    );
 };
 
 export default ParticipantAuth;

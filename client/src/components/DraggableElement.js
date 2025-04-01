@@ -1,13 +1,21 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 
-const DraggableElement = ({ element, onUpdate, onDelete }) => {
+const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [content, setContent] = useState(element.content);
+  const [content, setContent] = useState(() =>element.content);
   const inputRef = useRef(null);
+
+  useEffect(() => {
+    setContent(element.content); 
+  }, [element.content]);
+  console.log("element",element);
+  console.log("isModificationAllowed",isModificationAllowed);
+  
   
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: element.id,
+    disabled: !isModificationAllowed
   });
 
   const style = {
@@ -24,6 +32,9 @@ const DraggableElement = ({ element, onUpdate, onDelete }) => {
   };
 
   const handleDoubleClick = () => {
+    if(!isModificationAllowed){
+      return;
+    }
     setIsEditing(true);
     setTimeout(() => inputRef.current?.focus(), 0);
   };
@@ -40,6 +51,9 @@ const DraggableElement = ({ element, onUpdate, onDelete }) => {
   };
 
   const handleDelete = (e) => {
+    if(!isModificationAllowed){
+      return;
+    }
     e.stopPropagation();
     onDelete(element.id);
   };

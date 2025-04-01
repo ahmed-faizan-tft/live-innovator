@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { setUser } from '../redux/userSlice';
+import { useDispatch } from 'react-redux';
 
 const Auth = () => {
   const [name, setName] = useState('');
   const [role, setRole] = useState('facilitator');
   const navigate = useNavigate()
+  const dispatch = useDispatch()
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -15,9 +18,10 @@ const Auth = () => {
 
     try {
       const response = await axios.post('http://localhost:8000/auth', payload,);
-
      if(response.status === 200){
-        navigate("/session/create")
+      const user = response?.data?.data
+      dispatch(setUser({id:user._id, name: user.name, role:user.role}));
+      navigate("/session/create")
      }
     } catch (error) {
       console.error('Error:', error);

@@ -7,6 +7,8 @@ import DraggableElement from './DraggableElement';
 import useSessionSocket from '../hooks/useSessionSocket';
 import useSessionAuth from '../hooks/useSessionAuth';
 import axios from 'axios';
+import { useSelector } from 'react-redux';
+import { isUserOwnerOrFaciliator } from '../utils';
 
 const EMPATHY_QUADRANTS = [
   { id: 'says', title: 'Says', color: '#FFEE93', x: 1, y: 1 },
@@ -26,6 +28,7 @@ const Whiteboard = () => {
   const [formText, setFormText] = useState('');
   const [quadrant, setQuadrant] = useState(null);
   const [inviteLink, setInviteLink] = useState("");
+  const User = useSelector((state) => state.User.user);  
   
   const { elements, updateElements } = useSessionSocket(sessionId);
   useSessionAuth(sessionId, sessionCode);
@@ -94,7 +97,8 @@ const Whiteboard = () => {
       content: formText,
       width: 120,
       height: 60,
-      color: quadrant.color
+      color: quadrant.color,
+      userId: User.id
     };
     
     updateElements([...elements, newElement]);
@@ -137,13 +141,15 @@ const Whiteboard = () => {
   };
 
   const handleElementUpdate = (id, updates) => {
-    updateElements(elements.map(el => 
+    const newUpdatedElements = elements.map(el => 
       el.id === id ? { ...el, ...updates } : el
-    ));
+    )
+    updateElements(newUpdatedElements);
   };
 
   const handleDeleteElement = (id) => {
-    updateElements(elements.filter(el => el.id !== id));
+    const newUpdatedElements = elements.filter(el => el.id !== id)
+    updateElements(newUpdatedElements);
   };
 
   return (
@@ -200,6 +206,7 @@ const Whiteboard = () => {
               element={{ ...element, x, y }}
               onUpdate={handleElementUpdate}
               onDelete={handleDeleteElement}
+              isModificationAllowed = {isUserOwnerOrFaciliator(element.userId, User.id, User.role)}
             />
           );
         })}
