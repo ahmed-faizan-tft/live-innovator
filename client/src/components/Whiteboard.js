@@ -98,7 +98,8 @@ const Whiteboard = () => {
       width: 120,
       height: 60,
       color: quadrant.color,
-      userId: User.id
+      userId: User.id,
+      username:User.name
     };
     
     updateElements([...elements, newElement]);
@@ -192,7 +193,7 @@ const Whiteboard = () => {
         </div>
         
         {/* Sticky notes rendering */}
-        {elements.map(element => {
+        {elements.map((element,index) => {
           const container = document.querySelector('.empathy-map-container')?.getBoundingClientRect();
           const centerX = container?.width / 2 || 0;
           const centerY = container?.height / 2 || 0;
@@ -207,6 +208,7 @@ const Whiteboard = () => {
               onUpdate={handleElementUpdate}
               onDelete={handleDeleteElement}
               isModificationAllowed = {isUserOwnerOrFaciliator(element.userId, User.id, User.role)}
+              index={index}
             />
           );
         })}

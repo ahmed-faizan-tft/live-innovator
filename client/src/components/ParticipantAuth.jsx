@@ -36,6 +36,7 @@ const sessionId = pathParts[1];
         if(response.status === 200){
             const user = response?.data?.data
             dispatch(setUser({id:user._id, name: user.name, role:user.role}));
+            localStorage.setItem('user', JSON.stringify({id:user._id, name: user.name, role:user.role}))
             navigate(`/session/${sessionId}?code=${code}&username=${username}`);
         }
     };

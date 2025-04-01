@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useDraggable } from '@dnd-kit/core';
+import { Tooltip } from 'react-tooltip'
 
-const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed }) => {
+const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed,index }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(() =>element.content);
   const inputRef = useRef(null);
@@ -59,6 +60,7 @@ const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed }
   };
 
   return (
+    <>
     <div
       ref={setNodeRef}
       style={style}
@@ -66,6 +68,8 @@ const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed }
       {...attributes}
       className="whiteboard-element"
       onDoubleClick={handleDoubleClick}
+      data-tooltip-id={`key-${index}`}
+      data-tooltip-content={`Author: ${element.username}`}
     >
       {isEditing ? (
         <input
@@ -107,6 +111,8 @@ const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed }
         ×
       </button>
     </div>
+    <Tooltip id={`key-${index}`} />
+    </>
   );
 };
 

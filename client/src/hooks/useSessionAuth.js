@@ -1,9 +1,20 @@
 import { useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { setUser } from '../redux/userSlice';
+import { useDispatch } from 'react-redux';
 
 const useSessionAuth = (sessionId, sessionCode) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    const user = localStorage.getItem("user");
+    if(user){
+      const updatedUser = JSON.parse(user)      
+      dispatch(setUser(updatedUser));
+    }
+  },[])
 
   useEffect(() => {
     if (!sessionCode) return;
