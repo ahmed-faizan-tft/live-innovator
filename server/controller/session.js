@@ -17,7 +17,9 @@ const create = async (req, res) => {
   const getSessionData = async (req, res) => {
     const { sessionId} = req.params;
     const data = getCache(sessionId);
-    return res.status(200).json({sessionId, data});
+    const lockedData = getCache(`locked-session-id-${sessionId}`)
+    
+    return res.status(200).json({sessionId, data, lockedData});
   }
 
   module.exports = {create,getSessionData}

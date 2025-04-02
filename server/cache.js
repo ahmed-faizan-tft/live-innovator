@@ -1,8 +1,8 @@
 const NodeCache = require("node-cache");
 
-const cache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
+const cache = new NodeCache({ stdTTL: 2*60*60, checkperiod: 10*60 });
 
-function set(key, value, ttl = 60) {
+function set(key, value, ttl = 2*60*60) {
   return cache.set(key, value, ttl);
 }
 

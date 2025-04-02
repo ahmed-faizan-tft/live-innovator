@@ -33,6 +33,11 @@ io.of(/^\/session\/[a-zA-Z0-9-]+$/).on('connection', (socket) => {
     socket.broadcast.emit("elements", data)
   })
 
+  socket.on("locked",({sessionId,data})=>{
+    setCache(`locked-session-id-${sessionId}`,data)    
+    socket.broadcast.emit("lockedElements", data)
+  })
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });

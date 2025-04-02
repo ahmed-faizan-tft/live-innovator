@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { createSocket } from '../utils/socket';
+import { useDispatch } from 'react-redux';
+import { setLockedElement } from '../redux/userSlice';
 
 const useSessionSocket = (sessionId) => {
   const [socket, setSocket] = useState(null);
   const [elements, setElements] = useState([]);
+  const dispatch = useDispatch()
 
   useEffect(() => {
     const newSocket = createSocket(sessionId);
@@ -16,6 +19,10 @@ const useSessionSocket = (sessionId) => {
         if (response.status === 200 && response.data?.data) {
           setElements(response.data.data);
         }
+        
+        if (response.status === 200 && response.data?.lockedData) {
+          dispatch(setLockedElement(response.data.lockedData));
+        }
       } catch (error) {
         console.error('Error fetching initial data:', error);
       }
@@ -26,6 +33,10 @@ const useSessionSocket = (sessionId) => {
     newSocket.on('elements', (newElements) => {
       setElements(newElements);
     });
+
+    newSocket.on('lockedElements', (data) =>{
+      dispatch(setLockedElement(data))
+    })
 
     return () => {
       newSocket.off('elements');
@@ -40,7 +51,7 @@ const useSessionSocket = (sessionId) => {
     }
   };
 
-  return { elements, updateElements };
+  return { socket, elements, updateElements };
 };
 
 export default useSessionSocket;

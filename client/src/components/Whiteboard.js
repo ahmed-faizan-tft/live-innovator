@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { DndContext, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { v4 as uuidv4 } from 'uuid';
 import { restrictToParentElement } from '@dnd-kit/modifiers';
@@ -7,8 +7,9 @@ import DraggableElement from './DraggableElement';
 import useSessionSocket from '../hooks/useSessionSocket';
 import useSessionAuth from '../hooks/useSessionAuth';
 import axios from 'axios';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { isUserOwnerOrFaciliator } from '../utils';
+import { setLockedElement, setSelectedElement } from '../redux/userSlice';
 
 const EMPATHY_QUADRANTS = [
   { id: 'says', title: 'Says', color: '#FFEE93', x: 1, y: 1 },
@@ -28,10 +29,14 @@ const Whiteboard = () => {
   const [formText, setFormText] = useState('');
   const [quadrant, setQuadrant] = useState(null);
   const [inviteLink, setInviteLink] = useState("");
-  const User = useSelector((state) => state.User.user);  
+  const User = useSelector((state) => state.User.user);
+  const SelectedElement = useSelector((state) => state.User.selectedElement);    
+  const LockedElement = useSelector((state) => state.User.lockedElement);    
   
-  const { elements, updateElements } = useSessionSocket(sessionId);
+  const { socket, elements, updateElements } = useSessionSocket(sessionId);
   useSessionAuth(sessionId, sessionCode);
+  const dispatch = useDispatch()  
+  const ref = useRef()
   
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 10 } }),
@@ -153,10 +158,42 @@ const Whiteboard = () => {
     updateElements(newUpdatedElements);
   };
 
+  const handleDropdownChange = (event) => {
+    const value = event.target.value;   
+     
+    if (value === "lock") {
+      const newLockedElements = [...LockedElement, SelectedElement];
+      dispatch(setLockedElement(newLockedElements))
+      socket.emit("locked", {sessionId, data: newLockedElements})
+    }else if(value === "unlock"){
+      const updatedLockedElements = LockedElement.filter(el => el !== SelectedElement);
+      dispatch(setLockedElement(updatedLockedElements))
+      socket.emit("locked", {sessionId, data: updatedLockedElements})
+    }
+    dispatch(setSelectedElement(""))
+    ref.current.value = ""
+  };
+  
+
+  const isLocked = () =>{    
+    return !!(SelectedElement && SelectedElement.length > 0 && LockedElement.includes(SelectedElement))
+  }
+  
+
   return (
     <>
      {!sessionCode && <div className="invite-container">
       <h2 className="session-title">Session: {localStorage.getItem("name")}</h2>
+      <select
+        className="invite-dropdown"
+        onChange={handleDropdownChange}
+        disabled={SelectedElement?.length > 0 ? false : true}
+        ref={ref}
+      >
+        <option value="">Select Action</option> 
+        <option value="lock" disabled={isLocked()}>Lock</option>
+        <option value="unlock" disabled={!isLocked()}>Unlock</option>
+      </select>
       <button className="invite-button" onClick={generateLink}>
         Invite
       </button>
