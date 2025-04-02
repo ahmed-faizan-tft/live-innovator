@@ -7,11 +7,13 @@ import { setSelectedElement } from '../redux/userSlice';
 const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed,index }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(() =>element.content);
+  const [fontSize, setFontSize] = useState(12);
   const SelectedElement = useSelector((state) => state.User.selectedElement);  
   const LockedElement = useSelector((state) => state.User.lockedElement);  
   const User = useSelector((state) => state.User.user);  
 
   const inputRef = useRef(null);
+  const divRef = useRef(null);
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -38,17 +40,70 @@ const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed,i
     border: SelectedElement === element.id ? "1px solid red" : "",
   };
   const innerStyle = {
-      width: '100%',
-      height: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      textAlign: 'center',
-      wordWrap: 'break-word',
-      overflow: 'hidden', 
-      whiteSpace: 'pre-wrap',
-      overflow: 'auto'
+    width: "100%",
+    height: "100%",
+    overflow: "hidden",
+    fontSize: `${fontSize}px`,
+    whiteSpace: "pre-wrap", 
+    wordWrap: "break-word" 
   }
+
+  useEffect(() => {
+    const div = divRef.current;
+    if (!div) return;
+
+    if (content === "") {
+        setFontSize(12);
+        return;
+    }
+    console.log("ffy", div.style);
+    
+
+    // Temporary styles for measurement
+    const originalFontSize = div.style.fontSize;
+    const originalWhiteSpace = div.style.whiteSpace;
+    const originalWordWrap = div.style.wordWrap;
+
+    // Ensure text wrapping is enabled for accurate measurement
+    div.style.whiteSpace = "pre-wrap";
+    div.style.wordWrap = "break-word";
+
+    let minFont = 1;
+    let maxFont = 12;
+    let optimalFont = minFont;
+
+    // Check if the maximum font size works
+    div.style.fontSize = `${maxFont}px`;
+    if (div.scrollHeight <= div.clientHeight && div.scrollWidth <= div.clientWidth) {
+        setFontSize(maxFont);
+        div.style.fontSize = originalFontSize;
+        div.style.whiteSpace = originalWhiteSpace;
+        div.style.wordWrap = originalWordWrap;
+        return;
+    }
+
+    // Binary search to find optimal font size
+    while (minFont <= maxFont) {
+        const midFont = Math.floor((minFont + maxFont) / 2);
+        div.style.fontSize = `${midFont}px`;
+
+        const isOverflowing = div.scrollHeight > div.clientHeight || div.scrollWidth > div.clientWidth;
+
+        if (isOverflowing) {
+            maxFont = midFont - 1;
+        } else {
+            optimalFont = midFont;
+            minFont = midFont + 1;
+        }
+    }
+
+    // Restore original styles
+    div.style.fontSize = originalFontSize;
+    div.style.whiteSpace = originalWhiteSpace;
+    div.style.wordWrap = originalWordWrap;
+
+    setFontSize(optimalFont);
+}, [content, element.content]);
   const handleDoubleClick = () => {
     if(!isModificationAllowed || (LockedElement.includes(element.id) && User.role === "user")){
       return;
@@ -115,7 +170,7 @@ const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed,i
           }}
         />
       ) : (
-        <div className="element-content" style={innerStyle}>
+        <div className="element-content" style={innerStyle} ref={divRef}>
           {content}
         </div>
       )}
