@@ -1,17 +1,31 @@
-import axios from 'axios';
-import React, { useState } from 'react';
+// ... existing imports ...
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from "uuid";
 import { faker } from '@faker-js/faker';
+import axios from 'axios';
+import { useDispatch, useSelector } from 'react-redux';
+import { setSelectedTemplate } from '../redux/userSlice';
 
 const Session = () => {
-  // State variables
   const [showTabs, setShowTabs] = useState(true);
   const [activeTab, setActiveTab] = useState('ongoing');
   const [showCard, setShowCard] = useState(false);
-  const navigate = useNavigate();
+  const [templates, setTemplates] = useState([]);
 
-  // Inline styles
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    async function getTemplates() {
+      const response = await axios.get('http://localhost:8000/get-templates');
+      if (response.status === 200) {
+        setTemplates(response.data.data);
+      }
+    }
+    getTemplates();
+  }, []);
+
   const styles = {
     container: {
       fontFamily: 'Arial, sans-serif',
@@ -43,6 +57,7 @@ const Session = () => {
       border: '1px solid #ccc',
       borderRadius: '8px',
       padding: '20px',
+      marginBottom: '20px',
       cursor: 'pointer',
       boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
     },
@@ -51,13 +66,16 @@ const Session = () => {
       fontWeight: 'bold',
       marginBottom: '10px',
     },
-    cardDescription: {
-      fontSize: '14px',
-      color: '#555',
+    sectionItem: {
+      padding: '6px 10px',
+      borderRadius: '5px',
+      color: '#333',
+      display: 'inline-block',
+      marginRight: '10px',
+      marginBottom: '6px',
     },
   };
 
-  // Handlers
   const handleCreateSession = () => {
     setShowTabs(false);
     setShowCard(true);
@@ -67,13 +85,18 @@ const Session = () => {
     setActiveTab(tab);
   };
 
-  const handleCardClick = async () => {
+  const handleCardClick = async (template) => {
+    
     const key = uuidv4();
-    const randomName = faker.person.fullName();
-    const response = await axios.post('http://localhost:8000/create-session', {sessionId: key, name:randomName});
-    localStorage.setItem("name",randomName)
-    if(response.status === 200 ){
-        navigate(`/session/${key}`)
+    const randomName = template?.sessionName
+    const response = await axios.post('http://localhost:8000/create-session', {
+      sessionId: key,
+      name: randomName,
+    });
+    localStorage.setItem("name", randomName);
+    if (response.status === 200) {
+      dispatch(setSelectedTemplate(template))
+      navigate(`/session/${key}`);
     }
   };
 
@@ -103,12 +126,28 @@ const Session = () => {
         </>
       )}
 
-      {showCard && (
-        <div style={styles.card} onClick={handleCardClick}>
-          <div style={styles.cardTitle}>Session Title</div>
-          <div style={styles.cardDescription}>Session Description</div>
+      {showCard && templates.map(template => (
+        <div
+          key={template._id}
+          style={styles.card}
+          onClick={() => handleCardClick(template)}
+        >
+          <div style={styles.cardTitle}>{template.sessionName}</div>
+          <div>
+            {template.sections.map((section) => (
+              <span
+                key={section.id}
+                style={{
+                  ...styles.sectionItem,
+                  backgroundColor: section.color,
+                }}
+              >
+                {section.title}
+              </span>
+            ))}
+          </div>
         </div>
-      )}
+      ))}
     </div>
   );
 };

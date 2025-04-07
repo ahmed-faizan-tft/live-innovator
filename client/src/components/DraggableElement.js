@@ -56,7 +56,6 @@ const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed,i
         setFontSize(12);
         return;
     }
-    console.log("ffy", div.style);
     
 
     // Temporary styles for measurement

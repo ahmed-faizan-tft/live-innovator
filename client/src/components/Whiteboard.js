@@ -11,13 +11,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { isUserOwnerOrFaciliator } from '../utils';
 import { setLockedElement, setSelectedElement } from '../redux/userSlice';
 
-const EMPATHY_QUADRANTS = [
-  { id: 'says', title: 'Says', color: '#FFEE93', x: 1, y: 1 },
-  { id: 'thinks', title: 'Thinks', color: '#ADF7B6', x: -1, y: 1 },
-  { id: 'feels', title: 'Feels', color: '#FFC09F', x: -1, y: -1 },
-  { id: 'does', title: 'Does', color: '#A0CED9', x: 1, y: -1 }
-];
-
 const Whiteboard = () => {
   const { id: sessionId } = useParams();
   const location = useLocation();
@@ -32,6 +25,8 @@ const Whiteboard = () => {
   const User = useSelector((state) => state.User.user);
   const SelectedElement = useSelector((state) => state.User.selectedElement);    
   const LockedElement = useSelector((state) => state.User.lockedElement);    
+  const SelectedTemplate = useSelector((state) => state.User.selectedTemplate);    
+
   
   const { socket, elements, updateElements } = useSessionSocket(sessionId);
   useSessionAuth(sessionId, sessionCode);
@@ -47,7 +42,7 @@ const Whiteboard = () => {
     const randomSessionId = Math.random().toString(36).substring(2, 10);
     const response = await axios.post("http://localhost:8000/create-join",{sessionId:sessionId, code: randomSessionId})
     if(response.status === 200){
-      setInviteLink(`${window.location.origin}/${sessionId}/join/${randomSessionId}`);
+      setInviteLink(`${window.location.origin}/${sessionId}/join/${randomSessionId}?template=${SelectedTemplate?._id}`);
     }
   };
 
@@ -72,7 +67,7 @@ const Whiteboard = () => {
     // Determine which quadrant was clicked
     const quadrantX = relX > 0 ? 1 : -1;
     const quadrantY = relY > 0 ? 1 : -1;
-    const clickedQuadrant = EMPATHY_QUADRANTS.find(q => q.x === quadrantX && q.y === quadrantY);
+    const clickedQuadrant = SelectedTemplate?.sections?.find(q => q.x === quadrantX && q.y === quadrantY);
     
     // Set form position and quadrant
     setFormPosition({ x: e.clientX, y: e.clientY });
@@ -130,7 +125,7 @@ const Whiteboard = () => {
         
         const quadrantX = newRelX > 0 ? 1 : -1;
         const quadrantY = newRelY > 0 ? 1 : -1;
-        const quadrant = EMPATHY_QUADRANTS.find(q => q.x === quadrantX && q.y === quadrantY);
+        const quadrant = SelectedTemplate?.sections?.find(q => q.x === quadrantX && q.y === quadrantY);
         
         return {
           ...el,
@@ -183,7 +178,7 @@ const Whiteboard = () => {
   return (
     <>
      {!sessionCode && <div className="invite-container">
-      <h2 className="session-title">Session: {localStorage.getItem("name")}</h2>
+      <h2 className="session-title">Session: {SelectedTemplate?.sessionName}</h2>
       <select
         className="invite-dropdown"
         onChange={handleDropdownChange}
@@ -209,7 +204,7 @@ const Whiteboard = () => {
       <DndContext sensors={sensors} onDragEnd={handleDragEnd} modifiers={[restrictToParentElement]}>
         {/* Quadrants rendering (same as before) */}
         <div className="quadrants-container">
-          {EMPATHY_QUADRANTS.map(quadrant => (
+          {SelectedTemplate?.sections?.map(quadrant => (
             <div 
               key={quadrant.id}
               className={`quadrant quadrant-${quadrant.id}`}

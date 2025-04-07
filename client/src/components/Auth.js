@@ -5,27 +5,24 @@ import { setUser } from '../redux/userSlice';
 import { useDispatch } from 'react-redux';
 
 const Auth = () => {
-  const [name, setName] = useState('');
-  const [role, setRole] = useState('facilitator');
-  const navigate = useNavigate()
-  const dispatch = useDispatch()
+  const [token, setToken] = useState('');
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const payload = { name, role };
-    
-
     try {
-      const response = await axios.post('http://localhost:8000/auth', payload,);
-     if(response.status === 200){
-      const user = response?.data?.data
-      dispatch(setUser({id:user._id, name: user.name, role:user.role}));
-      localStorage.setItem('user', JSON.stringify({id:user._id, name: user.name, role:user.role}))
-      navigate("/session/create")
-     }
+      const response = await axios.post('http://localhost:8000/auth', {token: token});
+
+      if (response.status === 200) {
+        const user = response?.data?.data;
+        dispatch(setUser({ id: user._id, name: user.name, role: user.role }));
+        localStorage.setItem('user', JSON.stringify({ id: user._id, name: user.name, role: user.role }));
+        navigate("/session/create");
+      }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Authentication failed:', error);
     }
   };
 
@@ -57,25 +54,14 @@ const Auth = () => {
 
   return (
     <form onSubmit={handleSubmit} style={formStyle}>
-      <label style={labelStyle}>Name:</label>
+      <label style={labelStyle}>JWT Token:</label>
       <input
         type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
+        value={token}
+        onChange={(e) => setToken(e.target.value)}
         style={inputStyle}
         required
       />
-
-      <label style={labelStyle}>Role:</label>
-      <select
-        value={role}
-        onChange={(e) => setRole(e.target.value)}
-        style={inputStyle}
-      >
-        <option value="facilitator">Facilitator</option>
-        <option value="participant">Participant</option>
-      </select>
-
       <button type="submit" style={buttonStyle}>Submit</button>
     </form>
   );

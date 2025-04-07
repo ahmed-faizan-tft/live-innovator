@@ -1,1 +1,3 @@
 /node_modules
+/jwt_generator.js
+/.env

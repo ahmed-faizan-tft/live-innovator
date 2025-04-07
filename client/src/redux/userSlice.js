@@ -3,7 +3,8 @@ import { createSlice } from '@reduxjs/toolkit';
 const initialState = {
   user:{},
   selectedElement:"",
-  lockedElement:[]
+  lockedElement:[],
+  selectedTemplate:{}
 };
 
 const userSlice = createSlice({
@@ -18,9 +19,12 @@ const userSlice = createSlice({
     },
     setLockedElement: (state, action) => {
       state.lockedElement = action.payload;
+    },
+    setSelectedTemplate: (state, action) => {
+      state.selectedTemplate = action.payload;
     }
   },
 });
 
-export const { setUser, setSelectedElement, setLockedElement } = userSlice.actions;
+export const { setUser, setSelectedElement, setLockedElement,setSelectedTemplate } = userSlice.actions;
 export default userSlice.reducer;

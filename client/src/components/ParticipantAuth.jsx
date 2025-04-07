@@ -1,15 +1,21 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { setUser } from "../redux/userSlice";
+import { useLocation, useNavigate } from "react-router-dom";
+import { setSelectedTemplate, setUser } from "../redux/userSlice";
 import { useDispatch } from "react-redux";
 const pathParts = window.location.pathname.split("/");
 
 const ParticipantAuth = () => {
-    const [username, setUsername] = useState("");
+    const [token, setToken] = useState("");
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-const sessionId = pathParts[1];
-  const code = pathParts[3];
+    const sessionId = pathParts[1];
+  const code = pathParts[3]
+  const location = useLocation();
+  
+  const queryParams = new URLSearchParams(location.search);
+  const templateId = queryParams.get("template");
+  
+  
   const navigate = useNavigate()
   const dispatch = useDispatch();
 
@@ -20,6 +26,12 @@ const sessionId = pathParts[1];
             
             if (sessionData.status === 200 && sessionData?.data?.data?.isPresent) {
                 setIsAuthenticated(true);
+                if(templateId){
+                  const template = await axios.get(`http://localhost:8000/get-template/${templateId}`);
+                  
+                  dispatch(setSelectedTemplate(template?.data?.data));
+
+                }
                 return;
             }
             navigate("/badAuth")
@@ -32,12 +44,12 @@ const sessionId = pathParts[1];
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const response = await axios.post('http://localhost:8000/auth', {name:username,role:"user"});
+        const response = await axios.post('http://localhost:8000/auth', {token});
         if(response.status === 200){
             const user = response?.data?.data
             dispatch(setUser({id:user._id, name: user.name, role:user.role}));
             localStorage.setItem('user', JSON.stringify({id:user._id, name: user.name, role:user.role}))
-            navigate(`/session/${sessionId}?code=${code}&username=${username}`);
+            navigate(`/session/${sessionId}?code=${code}&username=${user.name}`);
         }
     };
 
@@ -85,12 +97,12 @@ const sessionId = pathParts[1];
                 </>
             ) : (
                 <form onSubmit={handleSubmit} style={{ textAlign: "center" }}>
-                    <h2>Enter Your Name</h2>
+                    <h2>Enter JWT token</h2>
                     <input 
                         type="text" 
-                        placeholder="Enter username" 
-                        value={username} 
-                        onChange={(e) => setUsername(e.target.value)} 
+                        placeholder="Enter token" 
+                        value={token} 
+                        onChange={(e) => setToken(e.target.value)} 
                         required
                         style={{ padding: "10px", fontSize: "1rem", marginBottom: "10px" }}
                     />
