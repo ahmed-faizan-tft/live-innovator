@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { createSocket } from '../utils/socket';
 import { useDispatch } from 'react-redux';
-import { setLockedElement } from '../redux/userSlice';
+import { setLockedElement, setSelectedTemplate } from '../redux/userSlice';
 
 const useSessionSocket = (sessionId) => {
   const [socket, setSocket] = useState(null);
@@ -22,6 +22,10 @@ const useSessionSocket = (sessionId) => {
         
         if (response.status === 200 && response.data?.lockedData) {
           dispatch(setLockedElement(response.data.lockedData));
+        }
+
+        if (response.status === 200 && response.data?.templateData) {
+          dispatch(setSelectedTemplate(response.data?.templateData))
         }
       } catch (error) {
         console.error('Error fetching initial data:', error);

@@ -92,6 +92,7 @@ const Session = () => {
     const response = await axios.post('http://localhost:8000/create-session', {
       sessionId: key,
       name: randomName,
+      template:template
     });
     localStorage.setItem("name", randomName);
     if (response.status === 200) {
