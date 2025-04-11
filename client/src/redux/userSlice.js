@@ -12,7 +12,8 @@ const initialState = {
   isStageBlocked:false,
   selectedPostsForNextStage: [],
   finalizeStage: "finalizeStage",
-  comments: {}
+  comments: {},
+  notificationTitle: ""
 };
 
 const userSlice = createSlice({
@@ -54,6 +55,10 @@ const userSlice = createSlice({
     },
     setComments: (state, action) => {
       state.comments = action.payload
+    },
+    setNotificationTitle: (state, action) => {
+      state.notificationTitle = action.payload
+
     }
   },
 });
@@ -70,6 +75,7 @@ export const {
   setIsStageBlocked,
   setSelectedPostsForNextStage,
   setFinalizeStage,
-  setComments 
+  setComments,
+  setNotificationTitle 
 } = userSlice.actions;
 export default userSlice.reducer;

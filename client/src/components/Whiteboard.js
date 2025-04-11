@@ -10,7 +10,8 @@ import axios from 'axios';
 import { useDispatch, useSelector } from 'react-redux';
 import { isUserOwnerOrFaciliator } from '../utils';
 import { setActiveStage, setComments, setCurrentStage, setFinalizeStage, setIsStageBlocked, setLockedElement, setSelectedElement, setSelectedPostsForNextStage, setStagePost } from '../redux/userSlice';
-import activeStageEnum from '../utils/enum/stage';
+import activeStageEnum, { moveStageEnum } from '../utils/enum/stage';
+import Notification from './Notification';
 
 const Whiteboard = () => {
   const { id: sessionId } = useParams();
@@ -34,8 +35,9 @@ const Whiteboard = () => {
   const IsStageBlocked = useSelector((state) => state.User.isStageBlocked);    
   const FinalizeStage = useSelector((state) => state.User.finalizeStage);    
   const SelectedPostsForNextStage = useSelector((state) => state.User.selectedPostsForNextStage);   
+  const NotificationTitle = useSelector((state) => state.User.notificationTitle);   
   
-  const { socket, elements, updateElements } = useSessionSocket(sessionId);
+  const { socket, elements, updateElements } = useSessionSocket(sessionId, ActiveStage, CurrentStage);
   useSessionAuth(sessionId, sessionCode);
   const dispatch = useDispatch()  
   const ref = useRef()
@@ -186,6 +188,7 @@ const Whiteboard = () => {
     if(FinalizeStage === "finalizeStage"){
       dispatch(setFinalizeStage("nextStage"))
       socket.emit("blockStage",{sessionId, isBlocked:true, finalizeStage: "nextStage"})
+      socket.emit("notifications", sessionId, "You have been blocked by facilitator until finalize stage.")
     }else if(FinalizeStage === "nextStage"){
       // handling for the next stage
       const newStagePost = {...StagePosts,[ActiveStage]:elements}
@@ -215,11 +218,42 @@ const Whiteboard = () => {
           lockedElement:[]
         }
       )
+      socket.emit("notifications", sessionId, "You have been Moved into new stage by facilitator.")
     }
   }
   const handleComment = (data)=>{
     dispatch(setComments(data));
     socket.emit("comments", sessionId, data)
+  }
+  console.log("SelectedPostsForNextStage", SelectedPostsForNextStage );
+  console.log("Elements", elements );
+  console.log("StagePosts", StagePosts );
+  
+  const handleStageClick = (stage)=>{
+    if(User.role !== "facilitator") return;
+    if(!moveStageEnum[CurrentStage]?.includes(stage.type) || ActiveStage === stage.type || (FinalizeStage !== "finalizeStage" && ActiveStage===CurrentStage)) return;
+    if(stage.type === CurrentStage){
+      dispatch(setFinalizeStage("finalizeStage"));
+      dispatch(setActiveStage(stage.type));
+      updateElements(StagePosts[stage.type]);
+      dispatch(setSelectedPostsForNextStage([]));
+    }else{
+      dispatch(setActiveStage(stage.type));
+      dispatch(setFinalizeStage("nextStage"));
+      dispatch(setSelectedPostsForNextStage(StagePosts[activeStageEnum[stage.type]] || elements));
+      updateElements(StagePosts[stage.type]);
+      if(!StagePosts[CurrentStage]){
+        const newStagePost = {...StagePosts,[CurrentStage]:elements}
+        dispatch(setStagePost(newStagePost))
+      }
+    }
+    socket.emit('newElements', { id: sessionId, data: StagePosts[CurrentStage] });
+  }
+
+  const handleIncludePost = () =>{
+    const nextStage = activeStageEnum[ActiveStage];    
+    let newStagePost = {...StagePosts,[nextStage]:SelectedPostsForNextStage}
+    dispatch(setStagePost(newStagePost));
   }
 
   return (
@@ -236,9 +270,12 @@ const Whiteboard = () => {
         <option value="lock" disabled={isLocked()}>Lock</option>
         <option value="unlock" disabled={!isLocked()}>Unlock</option>
       </select>
-      <button className='stageButton' onClick={handleFinalizeStage}>
+      {elements?.length > 0 && CurrentStage === ActiveStage && <button className='stageButton' onClick={handleFinalizeStage}>
         {FinalizeStage === "finalizeStage" ? "Finalize Stage" : (FinalizeStage === "nextStage" ?"Move To Next Stage":"Start stage")}
-      </button>
+      </button>}
+      {CurrentStage !== ActiveStage && <button className='stageButton' onClick={handleIncludePost}>
+        Move post to next stages
+      </button>}
       <button className="invite-button" onClick={generateLink}>
         Invite
       </button>
@@ -254,7 +291,7 @@ const Whiteboard = () => {
       {Stages?.length > 0 &&
         Stages.map((stage, index) => (
           <span key={index} className="stage" style={stage.type === ActiveStage ? {fontWeight:"bold"}:{}}>
-            {stage.title}
+            <span onClick={()=>handleStageClick(stage)}>{stage.title}</span>
             {index < Stages.length - 1 && <span className="arrow">→</span>}
           </span>
         ))}
@@ -345,6 +382,8 @@ const Whiteboard = () => {
           </div>
         </form>
       )}
+
+      <Notification data={NotificationTitle}/>
     </div>
     </>
   );

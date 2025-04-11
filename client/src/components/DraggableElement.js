@@ -30,7 +30,6 @@ const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed,i
   useEffect(() => {
     setContent(element.content); 
   }, [element.content]);
-  console.log("User",User);
   
   
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
@@ -123,6 +122,7 @@ const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed,i
     setIsEditing(true);
     setTimeout(() => inputRef.current?.focus(), 0);
   };
+  console.log(isEditing)
 
   const handleClick = () => {
     if(User.role === "user") return;

@@ -61,6 +61,10 @@ io.of(/^\/session\/[a-zA-Z0-9-]+$/).on('connection', (socket) => {
     socket.broadcast.emit("commentsForOtherParticipants", comments);
   })
 
+  socket.on("notifications", (sessionId, title)=>{
+    socket.broadcast.emit("notifiyParticipants", title);
+  })
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });

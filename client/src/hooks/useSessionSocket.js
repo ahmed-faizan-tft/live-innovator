@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { createSocket } from '../utils/socket';
 import { useDispatch } from 'react-redux';
-import { setActiveStage, setComments, setCurrentStage, setFinalizeStage, setIsStageBlocked, setLockedElement, setSelectedTemplate, setStages } from '../redux/userSlice';
+import { setActiveStage, setComments, setCurrentStage, setFinalizeStage, setIsStageBlocked, setLockedElement, setNotificationTitle, setSelectedTemplate, setStages } from '../redux/userSlice';
 
-const useSessionSocket = (sessionId) => {
+const useSessionSocket = (sessionId,  ActiveStage, CurrentStage) => {
   const [socket, setSocket] = useState(null);
   const [elements, setElements] = useState([]);
   const dispatch = useDispatch()
@@ -16,7 +16,6 @@ const useSessionSocket = (sessionId) => {
     const fetchInitialData = async () => {
       try {
         const response = await axios.get(`http://localhost:8000/restore/${sessionId}`);
-        console.log("response.data",response.data);
         
         if(response.status !== 200){
           throw "Error in restoring data"
@@ -85,6 +84,10 @@ const useSessionSocket = (sessionId) => {
       dispatch(setComments(data));
     })
 
+    newSocket.on("notifiyParticipants",(title)=>{
+      dispatch(setNotificationTitle(title))
+    })
+
     return () => {
       newSocket.off('elements');
       newSocket.disconnect();
@@ -94,7 +97,9 @@ const useSessionSocket = (sessionId) => {
   const updateElements = (newElements) => {
     if (socket) {
       setElements(newElements);
-      socket.emit('newElements', { id: sessionId, data: newElements });
+      if( ActiveStage === CurrentStage){
+        socket.emit('newElements', { id: sessionId, data: newElements });
+      }
     }
   };
 
