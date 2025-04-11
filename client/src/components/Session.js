@@ -5,7 +5,14 @@ import { v4 as uuidv4 } from "uuid";
 import { faker } from '@faker-js/faker';
 import axios from 'axios';
 import { useDispatch, useSelector } from 'react-redux';
-import { setSelectedTemplate } from '../redux/userSlice';
+import { setActiveStage, setCurrentStage, setSelectedTemplate, setStages } from '../redux/userSlice';
+
+const stagesData = [
+  {type:"collection", title:"Collection"},
+  {type:"enrich", title:"Enrich"},
+  {type:"prioritize", title:"Prioritize"},
+  {type:"conclusion", title:"Conclusion"},
+]
 
 const Session = () => {
   const [showTabs, setShowTabs] = useState(true);
@@ -92,7 +99,10 @@ const Session = () => {
     const response = await axios.post('http://localhost:8000/create-session', {
       sessionId: key,
       name: randomName,
-      template:template
+      template:template,
+      stages: stagesData,
+      activeStage: "collection",
+      currentStage:"collection"
     });
     localStorage.setItem("name", randomName);
     if (response.status === 200) {

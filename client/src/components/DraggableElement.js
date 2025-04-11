@@ -2,28 +2,40 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { Tooltip } from 'react-tooltip'
 import { useDispatch, useSelector } from 'react-redux';
-import { setSelectedElement } from '../redux/userSlice';
+import { setSelectedElement, setSelectedPostsForNextStage } from '../redux/userSlice';
+import Modal from './Modal';
+import Comments from './Comments';
 
-const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed,index }) => {
+const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed,index,IsStageBlocked, finalizeStage, handleComment }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(() =>element.content);
   const [fontSize, setFontSize] = useState(12);
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const SelectedElement = useSelector((state) => state.User.selectedElement);  
   const LockedElement = useSelector((state) => state.User.lockedElement);  
-  const User = useSelector((state) => state.User.user);  
+  const User = useSelector((state) => state.User.user); 
+  const SelectedPostsForNextStage = useSelector((state) => state.User.selectedPostsForNextStage); 
+  const currentStage = useSelector((state) => state.User.currentStage); 
+  const CommentsState = useSelector((state) => state.User.comments); 
+  const ActiveStage = useSelector((state) => state.User.activeStage); 
+  const isEditAllowed = !isModificationAllowed || (LockedElement.includes(element.id) && User.role === "user") || (IsStageBlocked && User.role === "user") || (currentStage !== "collection" && User.role === "user")
 
   const inputRef = useRef(null);
   const divRef = useRef(null);
   const dispatch = useDispatch();
+  const isSelected = [...SelectedPostsForNextStage]?.some((newData)=>{
+    return newData.id === element.id;
+  });
 
   useEffect(() => {
     setContent(element.content); 
   }, [element.content]);
+  console.log("User",User);
   
   
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: element.id,
-    disabled: !isModificationAllowed || (LockedElement.includes(element.id) && User.role === "user")
+    disabled: isEditAllowed
   });
 
   const style = {
@@ -37,7 +49,7 @@ const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed,i
     cursor: isEditing ? 'text' : 'grab',
     zIndex: isEditing ? 1000 : 1,
     touchAction: 'none', // Important for touch devices
-    border: SelectedElement === element.id ? "1px solid red" : "",
+    border: SelectedElement === element.id || isSelected? "1px solid red" : "",
   };
   const innerStyle = {
     width: "100%",
@@ -103,8 +115,9 @@ const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed,i
 
     setFontSize(optimalFont);
 }, [content, element.content]);
+  
   const handleDoubleClick = () => {
-    if(!isModificationAllowed || (LockedElement.includes(element.id) && User.role === "user")){
+    if(isEditAllowed){
       return;
     }
     setIsEditing(true);
@@ -113,11 +126,26 @@ const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed,i
 
   const handleClick = () => {
     if(User.role === "user") return;
-    if(SelectedElement?.length > 0 && SelectedElement === element?.id){
-      dispatch(setSelectedElement(""));
-      return;
+    if(finalizeStage === "finalizeStage"){
+      if(SelectedElement?.length > 0 && SelectedElement === element?.id){
+        dispatch(setSelectedElement(""));
+        return;
+      }
+      dispatch(setSelectedElement(element?.id));
+    }else{
+      const newDatas = [...SelectedPostsForNextStage];
+      const isFound = newDatas?.some((newData)=>{
+        return newData.id === element.id;
+      });
+      if(isFound){
+        const data = newDatas?.filter((newData)=>{
+          return newData.id != element.id;
+        });
+        dispatch(setSelectedPostsForNextStage(data))
+      }else{
+        dispatch(setSelectedPostsForNextStage([...newDatas, element]))
+      }
     }
-    dispatch(setSelectedElement(element?.id));
   }
 
   const handleBlur = () => {
@@ -132,15 +160,29 @@ const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed,i
   };
 
   const handleDelete = (e) => {
-    if(!isModificationAllowed || (LockedElement.includes(element.id) && User.role === "user")){
+    if(isEditAllowed){
       return;
     }
     e.stopPropagation();
     onDelete(element.id);
   };
 
+  const handleClickComment = (e) => {
+    e.stopPropagation();
+    setIsModalOpen(true)
+  }
+
+  const handleAddComment = (postId, newComment) => {
+    const allComments = {...CommentsState};
+    let currentPostComment = allComments[postId] || [];
+    handleComment({...allComments, [postId]:[...currentPostComment,newComment]})
+  }
+
   return (
     <>
+    <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+      <Comments postId={element.id} comments={CommentsState[element.id]} onAddComment={handleAddComment} User={User}/>
+    </Modal>
     <div
       ref={setNodeRef}
       style={style}
@@ -191,6 +233,25 @@ const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed,i
       >
         ×
       </button>
+
+      {ActiveStage === "enrich" && <button 
+        className="comment-button" 
+        onClick={handleClickComment}
+        style={{
+          position: 'absolute',
+          top: 0,
+          right: "22px",
+          background: 'black',
+          color: 'white',
+          border: 'none',
+          borderRadius: '50%',
+          width: '20px',
+          height: '20px',
+          cursor: 'pointer',
+        }}
+      >
+        c
+      </button>}
     </div>
     <Tooltip id={`key-${index}`} />
     </>

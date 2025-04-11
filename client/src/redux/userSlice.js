@@ -4,7 +4,15 @@ const initialState = {
   user:{},
   selectedElement:"",
   lockedElement:[],
-  selectedTemplate:{}
+  selectedTemplate:{},
+  stages:[],
+  stagePosts:{},
+  activeStage:"",
+  currentStage:"",
+  isStageBlocked:false,
+  selectedPostsForNextStage: [],
+  finalizeStage: "finalizeStage",
+  comments: {}
 };
 
 const userSlice = createSlice({
@@ -22,9 +30,46 @@ const userSlice = createSlice({
     },
     setSelectedTemplate: (state, action) => {
       state.selectedTemplate = action.payload;
+    },
+    setStages: (state, action) => {
+      state.stages = action.payload;
+    },
+    setStagePost: (state, action) => {
+      state.stagePosts = action.payload;
+    },
+    setActiveStage: (state, action) => {
+      state.activeStage = action.payload;
+    },
+    setCurrentStage: (state, action) => {
+      state.currentStage = action.payload;
+    },
+    setIsStageBlocked: (state, action) => {
+      state.isStageBlocked = action.payload;
+    },
+    setSelectedPostsForNextStage: (state, action) => {
+      state.selectedPostsForNextStage = action.payload
+    },
+    setFinalizeStage: (state, action) => {
+      state.finalizeStage = action.payload
+    },
+    setComments: (state, action) => {
+      state.comments = action.payload
     }
   },
 });
 
-export const { setUser, setSelectedElement, setLockedElement,setSelectedTemplate } = userSlice.actions;
+export const { 
+  setUser, 
+  setSelectedElement, 
+  setLockedElement,
+  setSelectedTemplate, 
+  setStages, 
+  setStagePost,
+  setActiveStage,
+  setCurrentStage,
+  setIsStageBlocked,
+  setSelectedPostsForNextStage,
+  setFinalizeStage,
+  setComments 
+} = userSlice.actions;
 export default userSlice.reducer;

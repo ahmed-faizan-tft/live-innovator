@@ -40,6 +40,27 @@ io.of(/^\/session\/[a-zA-Z0-9-]+$/).on('connection', (socket) => {
     socket.broadcast.emit("lockedElements", data)
   })
 
+  socket.on("blockStage", ({sessionId, isBlocked, finalizeStage})=>{
+    setCache(`isBlocked-${sessionId}`,isBlocked)
+    setCache(`finalizeStage-${sessionId}`,finalizeStage)
+    socket.broadcast.emit("stageBlockedForParticipant", isBlocked)
+  })
+
+  socket.on("newStageStart", (data)=>{
+    setCache(data.sessionId,data?.elements)
+    setCache(`locked-session-id-${data.sessionId}`,data?.lockedElement)    
+    setCache(`isBlocked-${data.sessionId}`,data?.isBlocked)
+    setCache(`finalizeStage-${data.sessionId}`,data?.finalizeStage)
+    setCache(`activeStage-${data.sessionId}`,data?.activeStage)
+    setCache(`currentStage-${data.sessionId}`,data?.currentStage)
+    socket.broadcast.emit("newStageStartForParticipant", data)
+  })
+
+  socket.on("comments",(sessionId,comments)=>{
+    setCache(`comments-${sessionId}`,comments)
+    socket.broadcast.emit("commentsForOtherParticipants", comments);
+  })
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });

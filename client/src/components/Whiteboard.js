@@ -9,7 +9,8 @@ import useSessionAuth from '../hooks/useSessionAuth';
 import axios from 'axios';
 import { useDispatch, useSelector } from 'react-redux';
 import { isUserOwnerOrFaciliator } from '../utils';
-import { setLockedElement, setSelectedElement } from '../redux/userSlice';
+import { setActiveStage, setComments, setCurrentStage, setFinalizeStage, setIsStageBlocked, setLockedElement, setSelectedElement, setSelectedPostsForNextStage, setStagePost } from '../redux/userSlice';
+import activeStageEnum from '../utils/enum/stage';
 
 const Whiteboard = () => {
   const { id: sessionId } = useParams();
@@ -26,7 +27,13 @@ const Whiteboard = () => {
   const SelectedElement = useSelector((state) => state.User.selectedElement);    
   const LockedElement = useSelector((state) => state.User.lockedElement);    
   const SelectedTemplate = useSelector((state) => state.User.selectedTemplate);    
-
+  const Stages = useSelector((state) => state.User.stages);    
+  const StagePosts = useSelector((state) => state.User.stagePosts);    
+  const ActiveStage = useSelector((state) => state.User.activeStage);    
+  const CurrentStage = useSelector((state) => state.User.currentStage);    
+  const IsStageBlocked = useSelector((state) => state.User.isStageBlocked);    
+  const FinalizeStage = useSelector((state) => state.User.finalizeStage);    
+  const SelectedPostsForNextStage = useSelector((state) => state.User.selectedPostsForNextStage);   
   
   const { socket, elements, updateElements } = useSessionSocket(sessionId);
   useSessionAuth(sessionId, sessionCode);
@@ -48,6 +55,7 @@ const Whiteboard = () => {
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(inviteLink).then(() => {
+      setInviteLink("");
       alert("Invite link copied to clipboard!");
     });
   };
@@ -173,7 +181,46 @@ const Whiteboard = () => {
   const isLocked = () =>{    
     return !!(SelectedElement && SelectedElement.length > 0 && LockedElement.includes(SelectedElement))
   }
-  
+
+  const handleFinalizeStage = ()=>{
+    if(FinalizeStage === "finalizeStage"){
+      dispatch(setFinalizeStage("nextStage"))
+      socket.emit("blockStage",{sessionId, isBlocked:true, finalizeStage: "nextStage"})
+    }else if(FinalizeStage === "nextStage"){
+      // handling for the next stage
+      const newStagePost = {...StagePosts,[ActiveStage]:elements}
+      dispatch(setStagePost(newStagePost))
+      if(SelectedPostsForNextStage?.length === 0){
+        dispatch(setSelectedPostsForNextStage(elements))
+      }
+      dispatch(setFinalizeStage("startStage"))
+    }else{
+      dispatch(setFinalizeStage("finalizeStage"));
+      dispatch(setActiveStage(activeStageEnum[ActiveStage]));
+      dispatch(setCurrentStage(activeStageEnum[ActiveStage]));
+      dispatch(setIsStageBlocked(false));
+      updateElements(SelectedPostsForNextStage);
+      dispatch(setSelectedPostsForNextStage([]));
+      dispatch(setLockedElement([]));
+      dispatch(setSelectedElement(""));
+      // update all required data on participant side
+      socket.emit("newStageStart",
+        {
+          sessionId, 
+          isBlocked:false, 
+          finalizeStage: "finalizeStage",
+          currentStage:activeStageEnum[ActiveStage],
+          activeStage:activeStageEnum[ActiveStage],
+          elements:SelectedPostsForNextStage,
+          lockedElement:[]
+        }
+      )
+    }
+  }
+  const handleComment = (data)=>{
+    dispatch(setComments(data));
+    socket.emit("comments", sessionId, data)
+  }
 
   return (
     <>
@@ -189,6 +236,9 @@ const Whiteboard = () => {
         <option value="lock" disabled={isLocked()}>Lock</option>
         <option value="unlock" disabled={!isLocked()}>Unlock</option>
       </select>
+      <button className='stageButton' onClick={handleFinalizeStage}>
+        {FinalizeStage === "finalizeStage" ? "Finalize Stage" : (FinalizeStage === "nextStage" ?"Move To Next Stage":"Start stage")}
+      </button>
       <button className="invite-button" onClick={generateLink}>
         Invite
       </button>
@@ -200,7 +250,17 @@ const Whiteboard = () => {
         </div>
       )}
     </div>}
-    <div className="empathy-map-container" onClick={handleWhiteboardClick}>
+    <div className="stage-container">
+      {Stages?.length > 0 &&
+        Stages.map((stage, index) => (
+          <span key={index} className="stage" style={stage.type === ActiveStage ? {fontWeight:"bold"}:{}}>
+            {stage.title}
+            {index < Stages.length - 1 && <span className="arrow">→</span>}
+          </span>
+        ))}
+    </div>
+
+    <div className="empathy-map-container" onClick={IsStageBlocked && User.role === "user" || ActiveStage !== "collection" ? null : handleWhiteboardClick}>
       <DndContext sensors={sensors} onDragEnd={handleDragEnd} modifiers={[restrictToParentElement]}>
         {/* Quadrants rendering (same as before) */}
         <div className="quadrants-container">
@@ -240,7 +300,10 @@ const Whiteboard = () => {
               onUpdate={handleElementUpdate}
               onDelete={handleDeleteElement}
               isModificationAllowed = {isUserOwnerOrFaciliator(element.userId, User.id, User.role)}
+              IsStageBlocked={IsStageBlocked}
               index={index}
+              finalizeStage={FinalizeStage}
+              handleComment={handleComment}
             />
           );
         })}
