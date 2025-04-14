@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 
 const Notification = ({data}) => {
   const [visible, setVisible] = useState(false);
-console.log("data", data);
 
   useEffect(() => {
     if(data){

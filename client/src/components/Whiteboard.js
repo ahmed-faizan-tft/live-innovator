@@ -19,7 +19,11 @@ const Whiteboard = () => {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const sessionCode = queryParams.get("code");
-  
+  // Add this state at the top of Whiteboard component
+  const [deckItems] = useState([
+    { id: 'deck-1', content: 'Deck Item 1' },
+    { id: 'deck-2', content: 'Deck Item 2' },
+  ]);
   const [showForm, setShowForm] = useState(false);
   const [formPosition, setFormPosition] = useState({ x: 0, y: 0 });
   const [formText, setFormText] = useState('');
@@ -64,7 +68,7 @@ const Whiteboard = () => {
   };
 
   const handleWhiteboardClick = (e) => {
-    if (e.target.className !== 'empathy-map-container' && 
+    if (e.target.className !== 'quadrants-container' && 
         !e.target.className.includes('quadrant')) return;
     
     const container = e.currentTarget.getBoundingClientRect();
@@ -93,7 +97,7 @@ const Whiteboard = () => {
       return;
     }
 
-    const container = document.querySelector('.empathy-map-container').getBoundingClientRect();
+    const container = document.querySelector('.quadrants-container').getBoundingClientRect();
     const centerX = container.width / 2;
     const centerY = container.height / 2;
     
@@ -124,7 +128,7 @@ const Whiteboard = () => {
 
     const updatedElements = elements.map(el => {
       if (el.id === active.id) {
-        const container = document.querySelector('.empathy-map-container').getBoundingClientRect();
+        const container = document.querySelector('.quadrants-container').getBoundingClientRect();
         const centerX = container.width / 2;
         const centerY = container.height / 2;
         
@@ -226,9 +230,6 @@ const Whiteboard = () => {
     dispatch(setComments(data));
     socket.emit("comments", sessionId, data)
   }
-  console.log("SelectedPostsForNextStage", SelectedPostsForNextStage );
-  console.log("Elements", elements );
-  console.log("StagePosts", StagePosts );
   
   const handleStageClick = (stage)=>{
     if(User.role !== "facilitator") return;

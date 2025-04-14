@@ -122,7 +122,6 @@ const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed,i
     setIsEditing(true);
     setTimeout(() => inputRef.current?.focus(), 0);
   };
-  console.log(isEditing)
 
   const handleClick = () => {
     if(User.role === "user") return;

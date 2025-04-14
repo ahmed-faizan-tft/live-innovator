@@ -7,16 +7,20 @@ import DraggableElement from './DraggableElement';
 const Canvas = (props) => {
 const {IsStageBlocked, User, ActiveStage, handleWhiteboardClick, sensors, handleDragEnd, SelectedTemplate, elements, handleElementUpdate, handleDeleteElement, FinalizeStage, handleComment, showForm, handleFormSubmit, formPosition, formText, setFormText, setShowForm, quadrant} = props
   return (
-    <div className="empathy-map-container" onClick={IsStageBlocked && User.role === "user" || ActiveStage !== "collection" ? null : handleWhiteboardClick}>
+    <div className="empathy-map-container">
       <DndContext sensors={sensors} onDragEnd={handleDragEnd} modifiers={[restrictToParentElement]}>
+        {/* Deck-cards */}
+        <div className='deck-cards'>
+
+        </div>
         {/* Quadrants rendering (same as before) */}
-        <div className="quadrants-container">
+        <div className="quadrants-container quadrants-container-reheight" onClick={IsStageBlocked && User.role === "user" || ActiveStage !== "collection" ? null : handleWhiteboardClick}>
           {SelectedTemplate?.sections?.map(quadrant => (
             <div 
               key={quadrant.id}
               className={`quadrant quadrant-${quadrant.id}`}
               style={{ 
-                backgroundColor: `${quadrant.color}40`,
+                backgroundColor: `${quadrant.color}`,
                 position: 'absolute',
                 left: quadrant.x > 0 ? '50%' : '0',
                 top: quadrant.y > 0 ? '0' : '50%',
@@ -29,31 +33,31 @@ const {IsStageBlocked, User, ActiveStage, handleWhiteboardClick, sensors, handle
               <h3 style={{ textAlign: 'center', margin: '10px 0' }}>{quadrant.title}</h3>
             </div>
           ))}
+          {/* Sticky notes rendering */}
+          {elements.map((element,index) => {
+            const container = document.querySelector('.quadrants-container')?.getBoundingClientRect();
+            const centerX = container?.width / 2 || 0;
+            const centerY = container?.height / 2 || 0;
+            
+            const x = centerX + (element.relX * centerX) - (element.width / 2);
+            const y = centerY + (element.relY * centerY) - (element.height / 2);
+            
+            return (
+              <DraggableElement
+                key={element.id}
+                element={{ ...element, x, y }}
+                onUpdate={handleElementUpdate}
+                onDelete={handleDeleteElement}
+                isModificationAllowed = {isUserOwnerOrFaciliator(element.userId, User.id, User.role)}
+                IsStageBlocked={IsStageBlocked}
+                index={index}
+                finalizeStage={FinalizeStage}
+                handleComment={handleComment}
+              />
+            );
+          })}
         </div>
         
-        {/* Sticky notes rendering */}
-        {elements.map((element,index) => {
-          const container = document.querySelector('.empathy-map-container')?.getBoundingClientRect();
-          const centerX = container?.width / 2 || 0;
-          const centerY = container?.height / 2 || 0;
-          
-          const x = centerX + (element.relX * centerX) - (element.width / 2);
-          const y = centerY + (element.relY * centerY) - (element.height / 2);
-          
-          return (
-            <DraggableElement
-              key={element.id}
-              element={{ ...element, x, y }}
-              onUpdate={handleElementUpdate}
-              onDelete={handleDeleteElement}
-              isModificationAllowed = {isUserOwnerOrFaciliator(element.userId, User.id, User.role)}
-              IsStageBlocked={IsStageBlocked}
-              index={index}
-              finalizeStage={FinalizeStage}
-              handleComment={handleComment}
-            />
-          );
-        })}
       </DndContext>
 
       {/* Text input form */}

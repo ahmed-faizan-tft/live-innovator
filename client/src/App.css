@@ -1,17 +1,29 @@
 .empathy-map-container {
-  position: relative;
+  /* position: relative; */
   width: 100%;
   height: 80vh;
   background-color: white;
   border: 2px solid #333;
   overflow: hidden;
+  display: flex;
+
 }
 
 .quadrants-container {
-  position: absolute;
+  position: relative;
   width: 100%;
   height: 100%;
-  pointer-events: none; /* Allow clicks to pass through to the container */
+  background-color: pink;
+}
+
+.quadrants-container-reheight {
+  width: 70%;
+}
+
+.deck-cards{
+  width: 30%;
+  height: 100%;
+  background-color: grey;
 }
 
 .quadrant {
@@ -20,33 +32,6 @@
 
 .quadrant h3 {
   user-select: none; /* Prevent text selection */
-}
-
-/* Center lines */
-.empathy-map-container::before,
-.empathy-map-container::after {
-  content: '';
-  position: absolute;
-  background-color: rgba(0, 0, 0, 0.2);
-  z-index: 1;
-}
-
-.empathy-map-container::before {
-  /* Vertical line */
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  transform: translateX(-50%);
-}
-
-.empathy-map-container::after {
-  /* Horizontal line */
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 1px;
-  transform: translateY(-50%);
 }
 
 .sticky-note-form {
