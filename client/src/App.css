@@ -17,13 +17,14 @@
 }
 
 .quadrants-container-reheight {
-  width: 70%;
+  width: 80%;
 }
 
 .deck-cards{
-  width: 30%;
+  width: 20%;
   height: 100%;
   background-color: grey;
+  position: relative;
 }
 
 .quadrant {

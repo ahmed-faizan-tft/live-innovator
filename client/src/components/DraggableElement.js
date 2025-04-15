@@ -34,7 +34,10 @@ const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed,i
   
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: element.id,
-    disabled: isEditAllowed
+    disabled: isEditAllowed,
+    data: {
+      container: 'canvas'
+    }
   });
 
   const style = {

@@ -20,9 +20,9 @@ const Whiteboard = () => {
   const queryParams = new URLSearchParams(location.search);
   const sessionCode = queryParams.get("code");
   // Add this state at the top of Whiteboard component
-  const [deckItems] = useState([
-    { id: 'deck-1', content: 'Deck Item 1' },
-    { id: 'deck-2', content: 'Deck Item 2' },
+  const [deckElements, setDeckElements] = useState([
+    { id: 'deck-1', content: 'Deck Item 1', color: '#fff', width: 120, height: 60, x:0, y:0 },
+    { id: 'deck-2', content: 'Deck Item 2', color: '#fff', width: 120, height: 60, x:0, y:10 }
   ]);
   const [showForm, setShowForm] = useState(false);
   const [formPosition, setFormPosition] = useState({ x: 0, y: 0 });
@@ -123,37 +123,63 @@ const Whiteboard = () => {
   };
 
   const handleDragEnd = (event) => {
-    const { active, delta } = event;
-    if (!delta) return;
+    const { active, delta, over, activatorEvent } = event;
+    if (!delta || !over) return;
+    const activeContainer = active.data.current?.container;
+    const overContainerId = over.id;
 
-    const updatedElements = elements.map(el => {
-      if (el.id === active.id) {
+    // Move within the same container
+    if(activeContainer === "canvas" && overContainerId === "canvas"){
+      const updatedElements = elements.map(el => {
+        if (el.id === active.id) {
+          const container = document.querySelector('.quadrants-container').getBoundingClientRect();
+          const centerX = container.width / 2;
+          const centerY = container.height / 2;
+          
+          const relDeltaX = delta.x / centerX;
+          const relDeltaY = delta.y / centerY;
+          
+          const newRelX = el.relX + relDeltaX;
+          const newRelY = el.relY + relDeltaY;
+          
+          const quadrantX = newRelX > 0 ? 1 : -1;
+          const quadrantY = newRelY > 0 ? 1 : -1;
+          const quadrant = SelectedTemplate?.sections?.find(q => q.x === quadrantX && q.y === quadrantY);
+          
+          return {
+            ...el,
+            relX: newRelX,
+            relY: newRelY,
+            quadrant: quadrant.id,
+            color: quadrant.color
+          };
+        }
+        return el;
+      });
+      
+      updateElements(updatedElements);
+    }else if(activeContainer === "deck" && overContainerId === "canvas"){
+      const movedElement = [...deckElements].find(el => el.id === active.id);
+      if (movedElement) {
         const container = document.querySelector('.quadrants-container').getBoundingClientRect();
         const centerX = container.width / 2;
         const centerY = container.height / 2;
-        
-        const relDeltaX = delta.x / centerX;
-        const relDeltaY = delta.y / centerY;
-        
-        const newRelX = el.relX + relDeltaX;
-        const newRelY = el.relY + relDeltaY;
-        
-        const quadrantX = newRelX > 0 ? 1 : -1;
-        const quadrantY = newRelY > 0 ? 1 : -1;
-        const quadrant = SelectedTemplate?.sections?.find(q => q.x === quadrantX && q.y === quadrantY);
-        
-        return {
-          ...el,
-          relX: newRelX,
-          relY: newRelY,
-          quadrant: quadrant.id,
-          color: quadrant.color
-        };
+      const finalX = active.rect.current.translated.left;
+      const finalY = active.rect.current.translated.top;
+
+      // Convert to relative coordinates within canvas
+      const relX = ((finalX - container.left) - centerX + movedElement.width/2) / centerX;
+      const relY = ((finalY - container.top) - centerY + movedElement.height/2) / centerY;
+
+        const updatedElement = {
+          ...movedElement,
+          relX,
+          relY,
+        };              
+        setDeckElements(prev => prev.filter(el => el.id !== active.id));
+        updateElements(prev => [...prev, updatedElement]);
       }
-      return el;
-    });
-    
-    updateElements(updatedElements);
+    }
   };
 
   const handleElementUpdate = (id, updates) => {
@@ -319,6 +345,7 @@ const Whiteboard = () => {
       setFormText={setFormText}
       setShowForm={setShowForm}
       quadrant={quadrant}
+      deckElements={deckElements}
     />
     <Notification data={NotificationTitle}/>
     </>
