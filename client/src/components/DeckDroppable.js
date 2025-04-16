@@ -9,8 +9,8 @@ const DeckDroppable = ({deckElements}) => {
 
   return (
     <div className='deck-cards' ref={setNodeRef}>
-      {deckElements?.length > 0 && deckElements?.map((dectElement)=>{
-        return <PriorityElement element={dectElement}/>
+      {deckElements?.length > 0 && deckElements?.map((deckElement)=>{
+        return <PriorityElement element={deckElement}/>
       })}
     </div>
   )

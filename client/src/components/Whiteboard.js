@@ -9,7 +9,7 @@ import useSessionAuth from '../hooks/useSessionAuth';
 import axios from 'axios';
 import { useDispatch, useSelector } from 'react-redux';
 import { isUserOwnerOrFaciliator } from '../utils';
-import { setActiveStage, setComments, setCurrentStage, setFinalizeStage, setIsStageBlocked, setLockedElement, setSelectedElement, setSelectedPostsForNextStage, setStagePost } from '../redux/userSlice';
+import { setActiveStage, setComments, setCurrentStage, setDeckElements, setFinalizeStage, setIsStageBlocked, setLockedElement, setPrioritiesStagePosts, setSelectedElement, setSelectedPostsForNextStage, setStagePost } from '../redux/userSlice';
 import activeStageEnum, { moveStageEnum } from '../utils/enum/stage';
 import Notification from './Notification';
 import Canvas from './Canvas';
@@ -19,11 +19,6 @@ const Whiteboard = () => {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const sessionCode = queryParams.get("code");
-  // Add this state at the top of Whiteboard component
-  const [deckElements, setDeckElements] = useState([
-    { id: 'deck-1', content: 'Deck Item 1', color: '#fff', width: 120, height: 60, x:0, y:0 },
-    { id: 'deck-2', content: 'Deck Item 2', color: '#fff', width: 120, height: 60, x:0, y:10 }
-  ]);
   const [showForm, setShowForm] = useState(false);
   const [formPosition, setFormPosition] = useState({ x: 0, y: 0 });
   const [formText, setFormText] = useState('');
@@ -41,8 +36,10 @@ const Whiteboard = () => {
   const FinalizeStage = useSelector((state) => state.User.finalizeStage);    
   const SelectedPostsForNextStage = useSelector((state) => state.User.selectedPostsForNextStage);   
   const NotificationTitle = useSelector((state) => state.User.notificationTitle);   
+  const DeckElements = useSelector((state) => state.User.deckElements);   
+  const PrioritiesStagePosts = useSelector((state) => state.User.prioritiesStagePosts);   
   
-  const { socket, elements, updateElements } = useSessionSocket(sessionId, ActiveStage, CurrentStage);
+  const { socket, elements, updateElements } = useSessionSocket(sessionId, User);
   useSessionAuth(sessionId, sessionCode);
   const dispatch = useDispatch()  
   const ref = useRef()
@@ -116,8 +113,10 @@ const Whiteboard = () => {
       userId: User.id,
       username:User.name
     };
+    const combinedElements = [...elements, newElement]
     
-    updateElements([...elements, newElement]);
+    updateElements(combinedElements);
+    socket.emit('newElements', { id: sessionId, data: combinedElements });
     setFormText('');
     setShowForm(false);
   };
@@ -158,26 +157,59 @@ const Whiteboard = () => {
       });
       
       updateElements(updatedElements);
+      if(ActiveStage !== "prioritize"){
+        socket.emit('newElements', { id: sessionId, data: updatedElements });
+      }else{
+        //temporary
+        if(User.role === "facilitator") return;
+
+        const isPostPresent = PrioritiesStagePosts[active.id]
+        let newPostElements = isPostPresent.filter((element)=>{
+          return !(element.prioritizeUserId === User.id)
+        });
+        const activeUpdatedElement = updatedElements?.filter((element)=>{
+          return element.id === active.id
+        })
+        delete activeUpdatedElement.quandrant;
+        activeUpdatedElement.prioritizeUserId = User.id;
+        newPostElements = [...newPostElements, ...activeUpdatedElement];
+        dispatch(setPrioritiesStagePosts({...PrioritiesStagePosts, [active.id]:newPostElements}))
+        socket.emit("priorityCombinedPost",sessionId,{...PrioritiesStagePosts, [active.id]:newPostElements});
+      }
     }else if(activeContainer === "deck" && overContainerId === "canvas"){
-      const movedElement = [...deckElements].find(el => el.id === active.id);
+      //temporary
+      if(User.role === "facilitator") return;
+      const movedElement = [...DeckElements].find(el => el.id === active.id);
       if (movedElement) {
         const container = document.querySelector('.quadrants-container').getBoundingClientRect();
         const centerX = container.width / 2;
         const centerY = container.height / 2;
-      const finalX = active.rect.current.translated.left;
-      const finalY = active.rect.current.translated.top;
-
-      // Convert to relative coordinates within canvas
-      const relX = ((finalX - container.left) - centerX + movedElement.width/2) / centerX;
-      const relY = ((finalY - container.top) - centerY + movedElement.height/2) / centerY;
+        const finalX = active.rect.current.translated.left;
+        const finalY = active.rect.current.translated.top;
+        
+        // Convert to relative coordinates within canvas
+        const relX = ((finalX - container.left) - centerX + movedElement.width/2) / centerX;
+        const relY = ((finalY - container.top) - centerY + movedElement.height/2) / centerY;
 
         const updatedElement = {
           ...movedElement,
           relX,
           relY,
-        };              
-        setDeckElements(prev => prev.filter(el => el.id !== active.id));
+        };  
+        const modifiedDeckElements =  DeckElements.filter(el => el.id !== active.id);            
+        dispatch(setDeckElements(modifiedDeckElements));
+
         updateElements(prev => [...prev, updatedElement]);
+        const isPostPresent = PrioritiesStagePosts[active.id]
+        if(isPostPresent){
+          const priorityStageElementsData = {...PrioritiesStagePosts, [active.id]:[...isPostPresent,updatedElement]}
+          dispatch(setPrioritiesStagePosts(priorityStageElementsData));
+          socket.emit("priorityCombinedPost",sessionId,priorityStageElementsData);
+        }else{
+          const priorityStageElementsData = {...PrioritiesStagePosts, [active.id]:[updatedElement]};
+          dispatch(setPrioritiesStagePosts(priorityStageElementsData))
+          socket.emit("priorityCombinedPost",sessionId,priorityStageElementsData);
+        }
       }
     }
   };
@@ -186,12 +218,16 @@ const Whiteboard = () => {
     const newUpdatedElements = elements.map(el => 
       el.id === id ? { ...el, ...updates } : el
     )
+
     updateElements(newUpdatedElements);
+    socket.emit('newElements', { id: sessionId, data: newUpdatedElements });
   };
 
   const handleDeleteElement = (id) => {
     const newUpdatedElements = elements.filter(el => el.id !== id)
+
     updateElements(newUpdatedElements);
+    socket.emit('newElements', { id: sessionId, data: newUpdatedElements });
   };
 
   const handleDropdownChange = (event) => {
@@ -233,10 +269,33 @@ const Whiteboard = () => {
       dispatch(setActiveStage(activeStageEnum[ActiveStage]));
       dispatch(setCurrentStage(activeStageEnum[ActiveStage]));
       dispatch(setIsStageBlocked(false));
-      updateElements(SelectedPostsForNextStage);
       dispatch(setSelectedPostsForNextStage([]));
       dispatch(setLockedElement([]));
       dispatch(setSelectedElement(""));
+      if(activeStageEnum[ActiveStage] !== "prioritize"){
+
+        updateElements(SelectedPostsForNextStage);
+        socket.emit('newElements', { id: sessionId, data: SelectedPostsForNextStage });
+      }else{
+        // update deck for facilitator
+        let x = 0, y = 0;
+        const modifiedElements = SelectedPostsForNextStage?.map((element,index)=>{
+          y = index===0 ? 0 : y+10;
+          return {
+            id: element.id,
+            content: element.content,
+            width:element.width,
+            height:element.height,
+            userId:element.userId,
+            username:element.username,
+            x:x,
+            y:y,
+            color:"white"
+          }
+        })
+        dispatch(setDeckElements(modifiedElements));
+        updateElements([]);
+      }
       // update all required data on participant side
       socket.emit("newStageStart",
         {
@@ -264,12 +323,14 @@ const Whiteboard = () => {
       dispatch(setFinalizeStage("finalizeStage"));
       dispatch(setActiveStage(stage.type));
       updateElements(StagePosts[stage.type]);
+      socket.emit('newElements', { id: sessionId, data: StagePosts[stage.type] });
       dispatch(setSelectedPostsForNextStage([]));
     }else{
       dispatch(setActiveStage(stage.type));
       dispatch(setFinalizeStage("nextStage"));
       dispatch(setSelectedPostsForNextStage(StagePosts[activeStageEnum[stage.type]] || elements));
       updateElements(StagePosts[stage.type]);
+      socket.emit('newElements', { id: sessionId, data: StagePosts[stage.type] });
       if(!StagePosts[CurrentStage]){
         const newStagePost = {...StagePosts,[CurrentStage]:elements}
         dispatch(setStagePost(newStagePost))
@@ -345,7 +406,7 @@ const Whiteboard = () => {
       setFormText={setFormText}
       setShowForm={setShowForm}
       quadrant={quadrant}
-      deckElements={deckElements}
+      deckElements={DeckElements}
     />
     <Notification data={NotificationTitle}/>
     </>

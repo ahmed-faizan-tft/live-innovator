@@ -14,7 +14,8 @@ const Canvas = (props) => {
     <div className="empathy-map-container">
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         {/* Deck-cards */}
-        <DeckDroppable deckElements={deckElements}/>
+        {ActiveStage === "prioritize" && <DeckDroppable deckElements={deckElements}/>}
+
         {/* Quadrants rendering (same as before) */}
         <CanvasDroppable
           IsStageBlocked={IsStageBlocked}

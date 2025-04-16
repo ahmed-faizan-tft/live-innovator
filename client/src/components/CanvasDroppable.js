@@ -9,7 +9,7 @@ const CanvasDroppable = ({IsStageBlocked, User, ActiveStage, handleWhiteboardCli
     });
     
   return (
-    <div ref={setNodeRef} className="quadrants-container quadrants-container-reheight" onClick={IsStageBlocked && User.role === "user" || ActiveStage !== "collection" ? null : handleWhiteboardClick}>
+    <div ref={setNodeRef} className={`quadrants-container ${ActiveStage === "prioritize" ? "quadrants-container-reheight" : ""}`} onClick={IsStageBlocked && User.role === "user" || ActiveStage !== "collection" ? null : handleWhiteboardClick}>
       {SelectedTemplate?.sections?.map(quadrant => (
         <div 
           key={quadrant.id}
@@ -43,7 +43,7 @@ const CanvasDroppable = ({IsStageBlocked, User, ActiveStage, handleWhiteboardCli
             element={{ ...element, x, y }}
             onUpdate={handleElementUpdate}
             onDelete={handleDeleteElement}
-            isModificationAllowed = {isUserOwnerOrFaciliator(element.userId, User.id, User.role)}
+            isModificationAllowed = {isUserOwnerOrFaciliator(element.userId, User.id, User.role,ActiveStage)}
             IsStageBlocked={IsStageBlocked}
             index={index}
             finalizeStage={FinalizeStage}

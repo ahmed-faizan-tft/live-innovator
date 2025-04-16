@@ -65,6 +65,10 @@ io.of(/^\/session\/[a-zA-Z0-9-]+$/).on('connection', (socket) => {
     socket.broadcast.emit("notifiyParticipants", title);
   })
 
+  socket.on("priorityCombinedPost", (sessionId,data)=>{
+    socket.broadcast.emit("priorityCombinedPostForOthers", data)
+  })
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });

@@ -13,7 +13,9 @@ const initialState = {
   selectedPostsForNextStage: [],
   finalizeStage: "finalizeStage",
   comments: {},
-  notificationTitle: ""
+  notificationTitle: "",
+  deckElements:[],
+  prioritiesStagePosts:{}
 };
 
 const userSlice = createSlice({
@@ -58,7 +60,12 @@ const userSlice = createSlice({
     },
     setNotificationTitle: (state, action) => {
       state.notificationTitle = action.payload
-
+    },
+    setDeckElements: (state, action) => {
+      state.deckElements = action.payload
+    },
+    setPrioritiesStagePosts: (state, action) => {
+      state.prioritiesStagePosts = action.payload
     }
   },
 });
@@ -76,6 +83,8 @@ export const {
   setSelectedPostsForNextStage,
   setFinalizeStage,
   setComments,
-  setNotificationTitle 
+  setNotificationTitle,
+  setDeckElements,
+  setPrioritiesStagePosts 
 } = userSlice.actions;
 export default userSlice.reducer;

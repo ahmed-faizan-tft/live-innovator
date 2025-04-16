@@ -18,7 +18,7 @@ const DraggableElement = ({ element, onUpdate, onDelete, isModificationAllowed,i
   const currentStage = useSelector((state) => state.User.currentStage); 
   const CommentsState = useSelector((state) => state.User.comments); 
   const ActiveStage = useSelector((state) => state.User.activeStage); 
-  const isEditAllowed = !isModificationAllowed || (LockedElement.includes(element.id) && User.role === "user") || (IsStageBlocked && User.role === "user") || (currentStage !== "collection" && User.role === "user")
+  const isEditAllowed = !isModificationAllowed || (LockedElement.includes(element.id) && User.role === "user") || (IsStageBlocked && User.role === "user") || (currentStage === "enrich" && User.role === "user")
 
   const inputRef = useRef(null);
   const divRef = useRef(null);

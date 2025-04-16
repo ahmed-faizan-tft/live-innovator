@@ -2,12 +2,40 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { createSocket } from '../utils/socket';
 import { useDispatch } from 'react-redux';
-import { setActiveStage, setComments, setCurrentStage, setFinalizeStage, setIsStageBlocked, setLockedElement, setNotificationTitle, setSelectedTemplate, setStages } from '../redux/userSlice';
+import { setActiveStage, setComments, setCurrentStage, setDeckElements, setFinalizeStage, setIsStageBlocked, setLockedElement, setNotificationTitle, setPrioritiesStagePosts, setSelectedTemplate, setStages } from '../redux/userSlice';
 
-const useSessionSocket = (sessionId,  ActiveStage, CurrentStage) => {
+const useSessionSocket = (sessionId, User) => {
   const [socket, setSocket] = useState(null);
   const [elements, setElements] = useState([]);
   const dispatch = useDispatch()
+
+  function processPosts(data) {
+    const result = [];
+
+    for (const key in data) {
+        const posts = data[key];
+        if (!posts || posts.length === 0) continue;
+
+        const base = posts[0]; // All other properties are same across objects in a group
+
+        const avgRelX = posts.reduce((sum, item) => sum + item.relX, 0) / posts.length;
+        const avgRelY = posts.reduce((sum, item) => sum + item.relY, 0) / posts.length;
+
+        result.push({
+            id: base.id,
+            content: base.content,
+            width: base.width,
+            height: base.height,
+            userId: base.userId,
+            username: base.username,
+            color: base.color,
+            relX: avgRelX,
+            relY: avgRelY
+        });
+    }
+
+    return result;
+}
 
   useEffect(() => {
     const newSocket = createSocket(sessionId);
@@ -73,7 +101,28 @@ const useSessionSocket = (sessionId,  ActiveStage, CurrentStage) => {
     })
 
     newSocket.on("newStageStartForParticipant",(data)=>{
-      setElements(data.elements);
+      if(data?.activeStage !== "prioritize"){
+        setElements(data.elements);
+      }else{
+        let x = 0, y = 0;
+        const modifiedElements = data.elements?.map((element,index)=>{
+          y = index===0 ? 0 : y+10;
+          return {
+            id: element.id,
+            content: element.content,
+            width:element.width,
+            height:element.height,
+            userId:element.userId,
+            username:element.username,
+            x:x,
+            y:y,
+            color:"white",
+            prioritizeUserId: User.id
+          }
+        })        
+        dispatch(setDeckElements(modifiedElements));
+        setElements([]);
+      }
       dispatch(setLockedElement(data.lockedElement))
       dispatch(setIsStageBlocked(data.isBlocked));
       dispatch(setActiveStage(data.activeStage));
@@ -88,6 +137,15 @@ const useSessionSocket = (sessionId,  ActiveStage, CurrentStage) => {
       dispatch(setNotificationTitle(title))
     })
 
+    newSocket.on("priorityCombinedPostForOthers",(data)=>{      
+      dispatch(setPrioritiesStagePosts(data));
+      const newElements = processPosts(data);
+      
+      if(User.role === "facilitator"){
+        setElements(newElements);
+      }
+    })
+
     return () => {
       newSocket.off('elements');
       newSocket.disconnect();
@@ -97,9 +155,6 @@ const useSessionSocket = (sessionId,  ActiveStage, CurrentStage) => {
   const updateElements = (newElements) => {
     if (socket) {
       setElements(newElements);
-      if( ActiveStage === CurrentStage){
-        socket.emit('newElements', { id: sessionId, data: newElements });
-      }
     }
   };
 
