@@ -30,10 +30,14 @@ const create = async (req, res) => {
     const isStageBlockedData = getCache(`isBlocked-${sessionId}`)
     const finalizeStageData = getCache(`finalizeStage-${sessionId}`)
     const commentsData = getCache(`comments-${sessionId}`)
-    
-    
-    
-    return res.status(200).json({sessionId, data, lockedData, templateData, stagesData, activeStageData, currentStageData, isStageBlockedData, finalizeStageData, commentsData});
+    const stagesPostsData = getCache(`stagesPosts-${sessionId}`)
+    const actualDeckElementsData = getCache(`actualDeckElements-${sessionId}`)
+    const priorityCombinedPostData = getCache(`priorityCombinedPost-${sessionId}`)
+    const priorityPostsEachUserData = getCache(`priorityPostsEachUser-${sessionId}`)
+    return res.status(200).json({sessionId, data, lockedData, templateData, stagesData, activeStageData, currentStageData, isStageBlockedData, finalizeStageData, commentsData, stagesPostsData, actualDeckElementsData,
+        priorityCombinedPostData,
+        priorityPostsEachUserData
+    });
   }
 
   module.exports = {create,getSessionData}

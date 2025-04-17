@@ -15,7 +15,8 @@ const initialState = {
   comments: {},
   notificationTitle: "",
   deckElements:[],
-  prioritiesStagePosts:{}
+  prioritiesStagePosts:{},
+  prioritiesStagePostsEachUser:{}
 };
 
 const userSlice = createSlice({
@@ -66,6 +67,10 @@ const userSlice = createSlice({
     },
     setPrioritiesStagePosts: (state, action) => {
       state.prioritiesStagePosts = action.payload
+    },
+
+    setPrioritiesStagePostsEachUser: (state, action) => {
+      state.prioritiesStagePostsEachUser = action.payload
     }
   },
 });
@@ -85,6 +90,7 @@ export const {
   setComments,
   setNotificationTitle,
   setDeckElements,
-  setPrioritiesStagePosts 
+  setPrioritiesStagePosts,
+  setPrioritiesStagePostsEachUser 
 } = userSlice.actions;
 export default userSlice.reducer;

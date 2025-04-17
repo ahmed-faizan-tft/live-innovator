@@ -53,7 +53,15 @@ io.of(/^\/session\/[a-zA-Z0-9-]+$/).on('connection', (socket) => {
     setCache(`finalizeStage-${data.sessionId}`,data?.finalizeStage)
     setCache(`activeStage-${data.sessionId}`,data?.activeStage)
     setCache(`currentStage-${data.sessionId}`,data?.currentStage)
+    if(data?.currentStage === "prioritize"){
+      setCache(`actualDeckElements-${data.sessionId}`,data?.actualDeckElements); // actual posts that moved from enrich stage
+    }
     socket.broadcast.emit("newStageStartForParticipant", data)
+  })
+
+  // store all stages actual data
+  socket.on("stagesPosts",(sessionId, data)=>{
+    setCache(`stagesPosts-${sessionId}`,data);
   })
 
   socket.on("comments",(sessionId,comments)=>{
@@ -64,9 +72,14 @@ io.of(/^\/session\/[a-zA-Z0-9-]+$/).on('connection', (socket) => {
   socket.on("notifications", (sessionId, title)=>{
     socket.broadcast.emit("notifiyParticipants", title);
   })
-
+  
   socket.on("priorityCombinedPost", (sessionId,data)=>{
+    setCache(`priorityCombinedPost-${sessionId}`,data)
     socket.broadcast.emit("priorityCombinedPostForOthers", data)
+  })
+
+  socket.on("priorityPostsEachUser", (sessionId,data)=>{
+    setCache(`priorityPostsEachUser-${sessionId}`,data)
   })
 
   socket.on('disconnect', () => {

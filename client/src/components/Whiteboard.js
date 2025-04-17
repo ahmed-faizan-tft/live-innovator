@@ -9,7 +9,7 @@ import useSessionAuth from '../hooks/useSessionAuth';
 import axios from 'axios';
 import { useDispatch, useSelector } from 'react-redux';
 import { isUserOwnerOrFaciliator } from '../utils';
-import { setActiveStage, setComments, setCurrentStage, setDeckElements, setFinalizeStage, setIsStageBlocked, setLockedElement, setPrioritiesStagePosts, setSelectedElement, setSelectedPostsForNextStage, setStagePost } from '../redux/userSlice';
+import { setActiveStage, setComments, setCurrentStage, setDeckElements, setFinalizeStage, setIsStageBlocked, setLockedElement, setPrioritiesStagePosts, setPrioritiesStagePostsEachUser, setSelectedElement, setSelectedPostsForNextStage, setStagePost } from '../redux/userSlice';
 import activeStageEnum, { moveStageEnum } from '../utils/enum/stage';
 import Notification from './Notification';
 import Canvas from './Canvas';
@@ -38,8 +38,9 @@ const Whiteboard = () => {
   const NotificationTitle = useSelector((state) => state.User.notificationTitle);   
   const DeckElements = useSelector((state) => state.User.deckElements);   
   const PrioritiesStagePosts = useSelector((state) => state.User.prioritiesStagePosts);   
+  const PrioritiesStagePostsEachUser = useSelector((state) => state.User.prioritiesStagePostsEachUser);   
   
-  const { socket, elements, updateElements } = useSessionSocket(sessionId, User);
+  const { socket, elements, updateElements } = useSessionSocket(sessionId);
   useSessionAuth(sessionId, sessionCode);
   const dispatch = useDispatch()  
   const ref = useRef()
@@ -150,7 +151,8 @@ const Whiteboard = () => {
             relX: newRelX,
             relY: newRelY,
             quadrant: quadrant.id,
-            color: quadrant.color
+            color: quadrant.color,
+            prioritizeUserId: ActiveStage ==="prioritize" ? User.id: undefined
           };
         }
         return el;
@@ -172,12 +174,16 @@ const Whiteboard = () => {
         })
         delete activeUpdatedElement.quandrant;
         activeUpdatedElement.prioritizeUserId = User.id;
+
         newPostElements = [...newPostElements, ...activeUpdatedElement];
         dispatch(setPrioritiesStagePosts({...PrioritiesStagePosts, [active.id]:newPostElements}))
         socket.emit("priorityCombinedPost",sessionId,{...PrioritiesStagePosts, [active.id]:newPostElements});
+
+        const currentUserPostsPositionAndDeckElements = {[User.id]:{deckElements:DeckElements, elements:updatedElements}};
+        dispatch(setPrioritiesStagePostsEachUser({...PrioritiesStagePostsEachUser, ...currentUserPostsPositionAndDeckElements}));
+        socket.emit("priorityPostsEachUser", sessionId, currentUserPostsPositionAndDeckElements)
       }
     }else if(activeContainer === "deck" && overContainerId === "canvas"){
-      //temporary
       if(User.role === "facilitator") return;
       const movedElement = [...DeckElements].find(el => el.id === active.id);
       if (movedElement) {
@@ -187,14 +193,20 @@ const Whiteboard = () => {
         const finalX = active.rect.current.translated.left;
         const finalY = active.rect.current.translated.top;
         
-        // Convert to relative coordinates within canvas
         const relX = ((finalX - container.left) - centerX + movedElement.width/2) / centerX;
         const relY = ((finalY - container.top) - centerY + movedElement.height/2) / centerY;
 
+        const quadrantX = relX > 0 ? 1 : -1;
+        const quadrantY = relY > 0 ? 1 : -1;
+        const quadrant = SelectedTemplate?.sections?.find(q => q.x === quadrantX && q.y === quadrantY);
+      
         const updatedElement = {
           ...movedElement,
           relX,
           relY,
+          quadrant: quadrant.id,
+          color: quadrant.color,
+          prioritizeUserId: ActiveStage ==="prioritize" ? User.id: undefined
         };  
         const modifiedDeckElements =  DeckElements.filter(el => el.id !== active.id);            
         dispatch(setDeckElements(modifiedDeckElements));
@@ -205,10 +217,18 @@ const Whiteboard = () => {
           const priorityStageElementsData = {...PrioritiesStagePosts, [active.id]:[...isPostPresent,updatedElement]}
           dispatch(setPrioritiesStagePosts(priorityStageElementsData));
           socket.emit("priorityCombinedPost",sessionId,priorityStageElementsData);
+
+          const currentUserPostsPositionAndDeckElements = {[User.id]:{deckElements:modifiedDeckElements, elements:[...elements,updatedElement]}};
+          dispatch(setPrioritiesStagePostsEachUser({...PrioritiesStagePostsEachUser, ...currentUserPostsPositionAndDeckElements}));
+          socket.emit("priorityPostsEachUser", sessionId, currentUserPostsPositionAndDeckElements)
         }else{
           const priorityStageElementsData = {...PrioritiesStagePosts, [active.id]:[updatedElement]};
           dispatch(setPrioritiesStagePosts(priorityStageElementsData))
           socket.emit("priorityCombinedPost",sessionId,priorityStageElementsData);
+
+          const currentUserPostsPositionAndDeckElements = {[User.id]:{deckElements:modifiedDeckElements, elements:[...elements, updatedElement]}};
+          dispatch(setPrioritiesStagePostsEachUser({...PrioritiesStagePostsEachUser, ...currentUserPostsPositionAndDeckElements}));
+          socket.emit("priorityPostsEachUser", sessionId, currentUserPostsPositionAndDeckElements)
         }
       }
     }
@@ -260,6 +280,8 @@ const Whiteboard = () => {
       // handling for the next stage
       const newStagePost = {...StagePosts,[ActiveStage]:elements}
       dispatch(setStagePost(newStagePost))
+      // emit a socket to store stages post on redis
+      socket.emit("stagesPosts",sessionId, newStagePost)
       if(SelectedPostsForNextStage?.length === 0){
         dispatch(setSelectedPostsForNextStage(elements))
       }
@@ -272,6 +294,7 @@ const Whiteboard = () => {
       dispatch(setSelectedPostsForNextStage([]));
       dispatch(setLockedElement([]));
       dispatch(setSelectedElement(""));
+      let modifiedElements = [];
       if(activeStageEnum[ActiveStage] !== "prioritize"){
 
         updateElements(SelectedPostsForNextStage);
@@ -279,7 +302,7 @@ const Whiteboard = () => {
       }else{
         // update deck for facilitator
         let x = 0, y = 0;
-        const modifiedElements = SelectedPostsForNextStage?.map((element,index)=>{
+        modifiedElements = SelectedPostsForNextStage?.map((element,index)=>{
           y = index===0 ? 0 : y+10;
           return {
             id: element.id,
@@ -304,7 +327,8 @@ const Whiteboard = () => {
           finalizeStage: "finalizeStage",
           currentStage:activeStageEnum[ActiveStage],
           activeStage:activeStageEnum[ActiveStage],
-          elements:SelectedPostsForNextStage,
+          elements:activeStageEnum[ActiveStage] !== "prioritize" ? SelectedPostsForNextStage : [],
+          actualDeckElements:activeStageEnum[ActiveStage] !== "prioritize" ? [] :modifiedElements,
           lockedElement:[]
         }
       )
@@ -334,6 +358,8 @@ const Whiteboard = () => {
       if(!StagePosts[CurrentStage]){
         const newStagePost = {...StagePosts,[CurrentStage]:elements}
         dispatch(setStagePost(newStagePost))
+        socket.emit("stagesPosts",sessionId, newStagePost)
+
       }
     }
     socket.emit('newElements', { id: sessionId, data: StagePosts[CurrentStage] });
@@ -343,6 +369,7 @@ const Whiteboard = () => {
     const nextStage = activeStageEnum[ActiveStage];    
     let newStagePost = {...StagePosts,[nextStage]:SelectedPostsForNextStage}
     dispatch(setStagePost(newStagePost));
+    socket.emit("stagesPosts",sessionId, newStagePost)
   }
 
   return (

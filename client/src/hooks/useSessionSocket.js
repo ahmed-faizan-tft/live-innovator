@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { createSocket } from '../utils/socket';
 import { useDispatch } from 'react-redux';
-import { setActiveStage, setComments, setCurrentStage, setDeckElements, setFinalizeStage, setIsStageBlocked, setLockedElement, setNotificationTitle, setPrioritiesStagePosts, setSelectedTemplate, setStages } from '../redux/userSlice';
+import { setActiveStage, setComments, setCurrentStage, setDeckElements, setFinalizeStage, setIsStageBlocked, setLockedElement, setNotificationTitle, setPrioritiesStagePosts, setPrioritiesStagePostsEachUser, setSelectedTemplate, setStagePost, setStages } from '../redux/userSlice';
 
-const useSessionSocket = (sessionId, User) => {
+const useSessionSocket = (sessionId) => {
   const [socket, setSocket] = useState(null);
   const [elements, setElements] = useState([]);
   const dispatch = useDispatch()
-
+  const user = localStorage.getItem("user");
+  const User = JSON.parse(user)      
   function processPosts(data) {
     const result = [];
 
@@ -48,10 +49,38 @@ const useSessionSocket = (sessionId, User) => {
         if(response.status !== 200){
           throw "Error in restoring data"
         }
-        if (response.data?.data) {
-          setElements(response.data.data);
+        console.log("response.data-",response.data);
+
+        if(response.data.activeStageData !== "prioritize"){
+          if (response.data?.data) {
+            setElements(response.data.data);
+          }
+        }else{          
+          if (response.data?.actualDeckElementsData && (!response.data?.priorityPostsEachUserData || !response.data?.priorityPostsEachUserData[User?.id])) {            
+            dispatch(setDeckElements(response.data?.actualDeckElementsData))
+          }
+
+          if (response.data?.priorityCombinedPostData) {
+            dispatch(setPrioritiesStagePosts(response.data?.priorityCombinedPostData));
+            const newElements = processPosts(response.data?.priorityCombinedPostData);
+
+            if(User.role === "facilitator"){
+              setElements(newElements);
+            }
+          }
+
+          if (response.data?.priorityPostsEachUserData) {
+            const userId = User.id;
+            const data = response.data?.priorityPostsEachUserData;
+            const currentUserStageData = data[userId];
+            if(currentUserStageData){
+              dispatch(setPrioritiesStagePostsEachUser(response.data?.priorityPostsEachUserData));
+              setElements(currentUserStageData.elements);
+              dispatch(setDeckElements(currentUserStageData.deckElements))
+            }
+          }
         }
-        
+
         if (response.data?.lockedData) {
           dispatch(setLockedElement(response.data.lockedData));
         }
@@ -70,12 +99,16 @@ const useSessionSocket = (sessionId, User) => {
         if (response.data?.currentStageData) {
           dispatch(setCurrentStage(response.data?.currentStageData))
         }
-        
+
         if (response.data?.isStageBlockedData) {
           dispatch(setIsStageBlocked(response.data?.isStageBlockedData))
         }
         if (response.data?.finalizeStageData) {
           dispatch(setFinalizeStage(response.data?.finalizeStageData))
+        }
+
+        if (response.data?.stagesPostsData) {
+          dispatch(setStagePost(response.data?.stagesPostsData))
         }
 
         if (response.data?.commentsData) {
@@ -105,7 +138,7 @@ const useSessionSocket = (sessionId, User) => {
         setElements(data.elements);
       }else{
         let x = 0, y = 0;
-        const modifiedElements = data.elements?.map((element,index)=>{
+        const modifiedElements = data.actualDeckElements?.map((element,index)=>{
           y = index===0 ? 0 : y+10;
           return {
             id: element.id,
