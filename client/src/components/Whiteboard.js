@@ -6,6 +6,7 @@ import { restrictToParentElement } from '@dnd-kit/modifiers';
 import { io } from "socket.io-client";
 import axios from 'axios';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import Quadrant from './Quadrant';
 const pathParts = window.location.pathname.split("/");
 
 const id = pathParts.filter((path)=> path.includes("-"))[0]
@@ -224,22 +225,7 @@ const Whiteboard = () => {
         {/* Quadrants rendering (same as before) */}
         <div className="quadrants-container">
           {EMPATHY_QUADRANTS.map(quadrant => (
-            <div 
-              key={quadrant.id}
-              className={`quadrant quadrant-${quadrant.id}`}
-              style={{ 
-                backgroundColor: `${quadrant.color}40`,
-                position: 'absolute',
-                left: quadrant.x > 0 ? '50%' : '0',
-                top: quadrant.y > 0 ? '0' : '50%',
-                width: '50%',
-                height: '50%',
-                border: '1px solid #ccc',
-                boxSizing: 'border-box'
-              }}
-            >
-              <h3 style={{ textAlign: 'center', margin: '10px 0' }}>{quadrant.title}</h3>
-            </div>
+            <Quadrant quadrant={quadrant}/>
           ))}
         </div>
         
